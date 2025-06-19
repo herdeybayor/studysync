@@ -19,7 +19,8 @@
         }
       ],
       "react-native-edge-to-edge",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
