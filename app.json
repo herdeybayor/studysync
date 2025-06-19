@@ -18,7 +18,8 @@
           "launchMode": "most-recent"
         }
       ],
-      "react-native-edge-to-edge"
+      "react-native-edge-to-edge",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -32,14 +33,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.herdeybayor.studysync"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.herdeybayor.studysync"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9d0bd92d-79c9-4217-8fd3-f8954002cb10"
       }
     }
   }

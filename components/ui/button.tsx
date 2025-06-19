@@ -19,7 +19,7 @@ Button.displayName = 'Button';
 const styles = StyleSheet.create((theme) => ({
   button: {
     alignItems: 'center',
-    backgroundColor: theme.colors.cornflowerBlue,
+    backgroundColor: theme.colors.primary,
     borderRadius: 24,
     elevation: 5,
     flexDirection: 'row',
