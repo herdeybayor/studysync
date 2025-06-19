@@ -1,4 +1,5 @@
 import { useDrizzleStudio } from 'expo-drizzle-studio-plugin';
+import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
@@ -45,7 +46,7 @@ export default function RootRoute() {
           </View>
         </View>
 
-        <Button title="Get Started" style={styles.button} />
+        <Button title="Get Started" style={styles.button} onPress={() => router.push('/home')} />
       </View>
     </SafeAreaView>
   );
