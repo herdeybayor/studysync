@@ -1,3 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 
-export const Icons = Ionicons;
+export const Icons = Object.freeze(
+  Object.assign(Ionicons, {
+    Feather,
+  })
+);

@@ -54,13 +54,8 @@ export default function HomeHeader({ appSettings }: { appSettings: AppSettings }
       <BlurView intensity={10} tint="dark" style={styles.calendarContainer}>
         <View style={styles.calendarHeader}>
           <Text style={styles.calendarHeaderText}>Calendar</Text>
-          <TouchableOpacity style={styles.calendarArrowWrapper}>
-            <Icons
-              name="arrow-up"
-              size={16}
-              color={theme.colors.white}
-              style={styles.calendarArrow}
-            />
+          <TouchableOpacity style={styles.calendarArrow}>
+            <Icons.Feather name="arrow-up-right" size={16} color={theme.colors.white} />
           </TouchableOpacity>
         </View>
 
@@ -179,16 +174,13 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.white,
     fontWeight: 700,
   },
-  calendarArrowWrapper: {
+  calendarArrow: {
     width: theme.spacing(6),
     height: theme.spacing(6),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF4A',
     borderRadius: theme.spacing(6),
-  },
-  calendarArrow: {
-    transform: [{ rotate: '45deg' }],
   },
   calendarItems: {
     marginTop: theme.spacing(3),
