@@ -40,13 +40,16 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.herdeybayor.studysync",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app requires microphone access in order to transcribe speech"
-      }
+      },
+      "appleTeamId": "F8479GSX47"
     },
     "android": {
       "adaptiveIcon": {
@@ -54,7 +57,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.herdeybayor.studysync",
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "extra": {
       "router": {},
