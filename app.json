@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "studysync",
+    "name": "Study Sync",
     "slug": "studysync",
     "version": "1.0.0",
     "newArchEnabled": true,
@@ -34,9 +34,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.herdeybayor.studysync"

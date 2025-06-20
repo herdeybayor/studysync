@@ -1,2 +1,4 @@
 onlyBuiltDependencies:
+  - esbuild
   - react-native-nitro-modules
+  - unrs-resolver

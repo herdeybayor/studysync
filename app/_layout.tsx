@@ -17,6 +17,8 @@ export const DATABASE_NAME = 'studysync.db';
 const expoDb = SQLite.openDatabaseSync(DATABASE_NAME);
 const db = drizzle(expoDb);
 
+console.log('db', expoDb.databasePath);
+
 const LoadingScreen = () => {
   return (
     <View style={styles.loadingContainer}>
