@@ -73,7 +73,7 @@ export default function RootLayout() {
               animation: 'slide_from_bottom',
               sheetGrabberVisible: true,
               sheetInitialDetentIndex: 0,
-              sheetAllowedDetents: [0.5, 0.9],
+              sheetAllowedDetents: [0.5],
               sheetCornerRadius: 24,
               sheetElevation: 10,
             }}
