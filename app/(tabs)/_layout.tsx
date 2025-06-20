@@ -6,7 +6,12 @@ import { Icons } from '~/components/ui/icons';
 export default function TabLayout() {
   const { theme } = useUnistyles();
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: theme.colors.primary }}>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: theme.colors.primary,
+        headerShown: false,
+        tabBarStyle: { backgroundColor: theme.colors.background },
+      }}>
       <Tabs.Screen
         name="home"
         options={{
