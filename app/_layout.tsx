@@ -3,7 +3,9 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { Stack } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
 import { Suspense } from 'react';
-import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
+
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { DATABASE_NAME } from '~/db/constant';
 
 import migrations from '~/drizzle/migrations';
 
@@ -11,8 +13,6 @@ export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: 'index',
 };
-
-export const DATABASE_NAME = 'studysync.db';
 
 const expoDb = SQLite.openDatabaseSync(DATABASE_NAME);
 const db = drizzle(expoDb);

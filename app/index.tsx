@@ -1,7 +1,4 @@
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { useDrizzleStudio } from 'expo-drizzle-studio-plugin';
 import { router } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
@@ -13,12 +10,10 @@ import { SafeAreaView } from '~/components/ui/safe-area-view';
 import * as schema from '~/db/schema';
 
 import type { AppSettings } from '~/db/schema';
+import { useDrizzleDb } from '~/hooks/use-drizzle';
 
 export default function RootRoute() {
-  const db = useSQLiteContext();
-  useDrizzleStudio(db);
-
-  const drizzleDb = drizzle(db, { schema });
+  const drizzleDb = useDrizzleDb();
 
   const { theme } = useUnistyles();
 
