@@ -37,14 +37,18 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.herdeybayor.studysync"
+      "bundleIdentifier": "com.herdeybayor.studysync",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app requires microphone access in order to transcribe speech"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.herdeybayor.studysync"
+      "package": "com.herdeybayor.studysync",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "extra": {
       "router": {},
