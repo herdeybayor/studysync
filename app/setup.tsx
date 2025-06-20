@@ -4,8 +4,6 @@ import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import {
-  StyleSheet,
-  TextInput,
   View,
   Text,
   ActivityIndicator,
@@ -15,26 +13,36 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
+import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 import { Button } from '~/components/ui/button';
 import { SafeAreaView } from '~/components/ui/safe-area-view';
+import { FormInput } from '~/components/ui/form-input';
 import * as schema from '~/db/schema';
+import { userProfileSchema, type UserProfileFormData } from '~/lib/validations/user';
 
 export default function Setup() {
   const db = useSQLiteContext();
   const drizzleDb = drizzle(db, { schema });
-
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { theme } = useUnistyles();
 
-  const handleSubmit = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      // Simple validation
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UserProfileFormData>({
+    resolver: zodResolver(userProfileSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      username: '',
+    },
+  });
 
+  const onSubmit = async (data: UserProfileFormData) => {
     setIsSubmitting(true);
 
     try {
@@ -42,9 +50,9 @@ export default function Setup() {
       await drizzleDb
         .update(schema.appSettings)
         .set({
-          firstName,
-          lastName,
-          username: username.trim() || null,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          username: data.username,
           updatedAt: new Date(),
         })
         .where(eq(schema.appSettings.id, 1));
@@ -69,55 +77,48 @@ export default function Setup() {
             keyboardShouldPersistTaps="always">
             <View style={styles.content}>
               <Text style={styles.title}>Complete Your Profile</Text>
-              <Text style={styles.subtitle}>Tell us a bit about yourself</Text>
+              <Text style={styles.subtitle}>Set up your profile to get started</Text>
 
               <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>First Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="Enter your first name"
-                    placeholderTextColor="#999"
-                  />
-                </View>
+                <FormInput
+                  name="firstName"
+                  control={control}
+                  label="First Name"
+                  placeholder="Enter your first name"
+                  error={errors.firstName}
+                  autoCorrect={false}
+                />
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Last Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Enter your last name"
-                    placeholderTextColor="#999"
-                  />
-                </View>
+                <FormInput
+                  name="lastName"
+                  control={control}
+                  label="Last Name"
+                  placeholder="Enter your last name"
+                  error={errors.lastName}
+                  autoCorrect={false}
+                />
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Username (Optional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="Enter a username"
-                    placeholderTextColor="#999"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
+                <FormInput
+                  name="username"
+                  control={control}
+                  label="Username (Optional)"
+                  placeholder="Enter a username"
+                  error={errors.username}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
 
               {isSubmitting ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#2F80ED" size="large" />
+                  <ActivityIndicator color={theme.colors.primary} size="large" />
                 </View>
               ) : (
                 <Button
                   title="Save Profile"
                   style={styles.button}
-                  onPress={handleSubmit}
-                  disabled={!firstName.trim() || !lastName.trim() || isSubmitting}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isSubmitting}
                 />
               )}
             </View>
@@ -128,10 +129,10 @@ export default function Setup() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.background,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -141,41 +142,23 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: theme.margins.screen,
     justifyContent: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.colors.typography,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.typography,
+    opacity: 0.6,
     marginBottom: 32,
   },
   form: {
-    gap: 24,
     marginBottom: 32,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  input: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#000',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   loadingContainer: {
     marginTop: 'auto',
@@ -185,4 +168,4 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 'auto',
   },
-});
+}));
