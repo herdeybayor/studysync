@@ -1,8 +1,9 @@
-import { SafeAreaView, View } from 'react-native';
+import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { Header } from '~/components/custom/home/header';
 import { QuickActions } from '~/components/custom/home/quick-actions';
+import { SafeAreaView } from '~/components/ui/safe-area-view';
 import { Spacer } from '~/components/ui/spacer';
 
 import { useAppSettings } from '~/hooks/use-app-settings';

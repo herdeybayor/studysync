@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useUnistyles, StyleSheet } from 'react-native-unistyles';
 
@@ -14,7 +15,7 @@ export function QuickActions() {
           title: 'Start Recording',
           icon: require('~/assets/images/voice-button.png'),
           backgroundColor: theme.colors.primary,
-          onPress: () => {},
+          onPress: () => router.navigate('/record'),
         },
         {
           title: 'Get Transcript',
@@ -29,9 +30,9 @@ export function QuickActions() {
           style={[styles.card, { backgroundColor: item.backgroundColor }]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardHeaderText}>{item.title}</Text>
-            <TouchableOpacity style={styles.cardArrow}>
+            <View style={styles.cardArrow}>
               <Icons.Feather name="arrow-up-right" size={16} color={theme.colors.white} />
-            </TouchableOpacity>
+            </View>
           </View>
           <Image source={item.icon} style={styles.icon} />
         </TouchableOpacity>

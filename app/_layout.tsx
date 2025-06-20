@@ -64,6 +64,20 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="setup" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="record"
+            options={{
+              headerShown: false,
+              presentation: 'formSheet',
+              gestureDirection: 'vertical',
+              animation: 'slide_from_bottom',
+              sheetGrabberVisible: true,
+              sheetInitialDetentIndex: 0,
+              sheetAllowedDetents: [0.5],
+              sheetCornerRadius: 24,
+              sheetElevation: 10,
+            }}
+          />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       </SQLite.SQLiteProvider>
