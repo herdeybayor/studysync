@@ -1,19 +1,77 @@
+import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useDrizzleStudio } from 'expo-drizzle-studio-plugin';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
 import { Button } from '~/components/ui/button';
 import { Icons } from '~/components/ui/icons';
 import { Image } from '~/components/ui/image';
 import { SafeAreaView } from '~/components/ui/safe-area-view';
+import * as schema from '~/db/schema';
+
+import type { AppSettings } from '~/db/schema';
 
 export default function RootRoute() {
   const db = useSQLiteContext();
   useDrizzleStudio(db);
 
+  const drizzleDb = drizzle(db, { schema });
+
   const { theme } = useUnistyles();
+
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (appSettings) return;
+
+    (async () => {
+      // Check if app settings exist
+      const settings = await drizzleDb.select().from(schema.appSettings);
+
+      console.log('settings', settings);
+
+      if (settings.length === 0) {
+        // Create default app settings entry if none exists
+        const newSettings = {
+          id: 1,
+          firstName: null,
+          lastName: null,
+          username: null,
+          preferences: '{}',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        await drizzleDb.insert(schema.appSettings).values(newSettings);
+        setAppSettings(newSettings as AppSettings);
+      } else {
+        setAppSettings(settings[0]);
+      }
+
+      setLoading(false);
+    })();
+  }, [drizzleDb, appSettings]);
+
+  // Navigate based on whether user has completed setup
+  useEffect(() => {
+    if (!loading && appSettings) {
+      if (appSettings.firstName && appSettings.lastName) {
+        router.replace('/home');
+      }
+    }
+  }, [appSettings, loading]);
+
+  // Don't render the onboarding if we're going to redirect
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,7 +104,11 @@ export default function RootRoute() {
           </View>
         </View>
 
-        <Button title="Get Started" style={styles.button} onPress={() => router.push('/home')} />
+        <Button
+          title="Get Started"
+          style={styles.button}
+          onPress={() => router.replace('/setup')}
+        />
       </View>
     </SafeAreaView>
   );
@@ -55,6 +117,12 @@ export default function RootRoute() {
 const styles = StyleSheet.create((theme, { screen }) => ({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: theme.colors.background,
   },
   wrapper: {
