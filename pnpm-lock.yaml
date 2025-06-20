@@ -32,6 +32,9 @@ importers:
       expo:
         specifier: ~53.0.12
         version: 53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
+      expo-audio:
+        specifier: ~0.4.6
+        version: 0.4.6(expo@53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
       expo-blur:
         specifier: ~14.1.5
         version: 14.1.5(expo@53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
@@ -108,8 +111,8 @@ importers:
         specifier: ^0.20.0
         version: 0.20.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       whisper.rn:
-        specifier: 0.4.0-rc.11
-        version: 0.4.0-rc.11(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
+        specifier: 0.4.0-rc.12
+        version: 0.4.0-rc.12(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
       zod:
         specifier: ^3.25.67
         version: 3.25.67
@@ -2444,6 +2447,13 @@ packages:
       react: '*'
       react-native: '*'
 
+  expo-audio@0.4.6:
+    resolution: {integrity: sha512-/pgz0AnQHnyJWkPfTp/3gBDib6FZYnscpktFZgmPeTeCK8KkPV4+eV2oEDDbSe2ngUrqDA0WVO4MX2Mfeec9ZA==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
+
   expo-blur@14.1.5:
     resolution: {integrity: sha512-CCLJHxN4eoAl06ESKT3CbMasJ98WsjF9ZQEJnuxtDb9ffrYbZ+g9ru84fukjNUOTtc8A8yXE5z8NgY1l0OMrmQ==}
     peerDependencies:
@@ -4424,8 +4434,8 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
-  whisper.rn@0.4.0-rc.11:
-    resolution: {integrity: sha512-MYBQ/1tJiDx7FlzxGPQKGatLiq7rxIb8x02QtVBmbuD4+V6ZHnG9VixCzsrusNkmRnPWj5ep64nl8vgQXAmECA==}
+  whisper.rn@0.4.0-rc.12:
+    resolution: {integrity: sha512-RKu4Ed3nl08DTy7NDK4NeAvCwXmSEIZ9xNGBhOVqSyMnTkb5tV1QFNcrkx+qZozO4kJ7MCJRMdYTMoPbRHILJQ==}
     engines: {node: '>=18'}
     peerDependencies:
       react: '*'
@@ -7285,6 +7295,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  expo-audio@0.4.6(expo@53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0):
+    dependencies:
+      expo: 53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
+      react: 19.0.0
+      react-native: 0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)
+
   expo-blur@14.1.5(expo@53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0):
     dependencies:
       expo: 53.0.12(@babel/core@7.27.4)(@expo/metro-runtime@5.0.4(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)))(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
@@ -9550,7 +9566,7 @@ snapshots:
     dependencies:
       isexe: 2.0.0
 
-  whisper.rn@0.4.0-rc.11(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0):
+  whisper.rn@0.4.0-rc.12(react-native@0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0))(react@19.0.0):
     dependencies:
       react: 19.0.0
       react-native: 0.79.4(@babel/core@7.27.4)(@types/react@19.0.14)(react@19.0.0)

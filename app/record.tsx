@@ -1,6 +1,14 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  PermissionsAndroid,
+  Platform,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -11,21 +19,93 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import {
+  initWhisper,
+  type TranscribeRealtimeEvent,
+  type TranscribeRealtimeOptions,
+  type WhisperContext,
+} from 'whisper.rn';
 
 import { Icons } from '~/components/ui/icons';
 
 const WAVEFORM_COUNT = 30;
+
+// Define type for realtime transcribe controller
+interface RealtimeTranscribe {
+  stop: () => void;
+  unsubscribe: (() => void) | null;
+}
 
 export default function RecordScreen() {
   const { theme } = useUnistyles();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [transcription, setTranscription] = useState('');
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
+  const [whisperContext, setWhisperContext] = useState<WhisperContext | null>(null);
+  const [realtimeTranscribe, setRealtimeTranscribe] = useState<RealtimeTranscribe | null>(null);
 
   // Animated values
   const buttonScale = useSharedValue(1);
   const recordingOpacity = useSharedValue(0);
   const waveformValues = useSharedValue(Array(WAVEFORM_COUNT).fill(4));
+
+  // Load whisper model
+  useEffect(() => {
+    async function loadModel() {
+      try {
+        // Initialize whisper with the tiny model
+        const context = await initWhisper({
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          filePath: require('../assets/ggml-tiny.en.bin'),
+        });
+        setWhisperContext(context);
+        setIsModelLoaded(true);
+      } catch (error) {
+        console.error('Failed to load whisper model:', error);
+        Alert.alert(
+          'Model Load Error',
+          'Failed to load the speech recognition model. Please restart the app.'
+        );
+      }
+    }
+
+    loadModel();
+
+    // Cleanup on component unmount
+    return () => {
+      if (realtimeTranscribe) {
+        realtimeTranscribe.stop();
+      }
+      if (whisperContext) {
+        whisperContext.release();
+      }
+    };
+  }, [realtimeTranscribe, whisperContext]);
+
+  // Check and request microphone permissions
+  const requestMicrophonePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message: 'StudySync needs access to your microphone for lecture recording',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.error('Failed to request microphone permission:', err);
+        return false;
+      }
+    }
+    return true; // iOS handles permissions through info.plist
+  };
 
   // Format time display (mm:ss)
   const formatTime = (seconds: number) => {
@@ -73,24 +153,68 @@ export default function RecordScreen() {
   }, [isRecording, isPaused, theme.colors.primary, theme.colors.typography, waveformValues]);
 
   // Handle record button tap
-  const handleRecord = () => {
+  const handleRecord = async () => {
     // Animate button press
     buttonScale.value = withSequence(
       withTiming(0.9, { duration: 100 }),
       withTiming(1, { duration: 100 })
     );
 
+    if (!isModelLoaded) {
+      Alert.alert('Model not ready', 'Please wait for the speech recognition model to load.');
+      return;
+    }
+
     if (!isRecording) {
       // Start recording
-      setIsRecording(true);
-      setIsPaused(false);
+      const hasPermission = await requestMicrophonePermission();
 
-      // Start the blinking recording indicator
-      recordingOpacity.value = withRepeat(
-        withSequence(withTiming(1, { duration: 500 }), withTiming(0.3, { duration: 500 })),
-        -1, // Infinite repeat
-        true // Reverse
-      );
+      if (!hasPermission) {
+        Alert.alert('Permission Denied', 'Microphone permission is required to record lectures.');
+        return;
+      }
+
+      try {
+        if (!whisperContext) {
+          throw new Error('Whisper context not initialized');
+        }
+
+        const options: TranscribeRealtimeOptions = { language: 'en' };
+        const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
+
+        // Initialize with null unsubscribe function
+        setRealtimeTranscribe({ stop, unsubscribe: null });
+
+        // Subscribe to transcription events
+        subscribe((event: TranscribeRealtimeEvent) => {
+          const { isCapturing, data } = event;
+
+          // Update transcription text
+          if (data && data.result) {
+            setTranscription(data.result);
+          }
+
+          // Handle when transcription stops
+          if (!isCapturing) {
+            setIsRecording(false);
+            setIsPaused(false);
+            recordingOpacity.value = withTiming(0);
+          }
+        });
+
+        setIsRecording(true);
+        setIsPaused(false);
+
+        // Start the blinking recording indicator
+        recordingOpacity.value = withRepeat(
+          withSequence(withTiming(1, { duration: 500 }), withTiming(0.3, { duration: 500 })),
+          -1, // Infinite repeat
+          true // Reverse
+        );
+      } catch (error) {
+        console.error('Failed to start recording:', error);
+        Alert.alert('Recording Error', 'Failed to start recording. Please try again.');
+      }
     } else if (isPaused) {
       // Resume recording
       setIsPaused(false);
@@ -118,6 +242,13 @@ export default function RecordScreen() {
       withTiming(1, { duration: 100 })
     );
 
+    if (realtimeTranscribe) {
+      realtimeTranscribe.stop();
+      if (realtimeTranscribe.unsubscribe) {
+        realtimeTranscribe.unsubscribe();
+      }
+    }
+
     setIsRecording(false);
     setIsPaused(false);
     setRecordingTime(0);
@@ -127,6 +258,14 @@ export default function RecordScreen() {
 
     // Reset waveform to minimal height
     waveformValues.value = Array(WAVEFORM_COUNT).fill(4);
+  };
+
+  // Handle save button tap
+  const handleSave = () => {
+    // Here you would save the transcription to your database
+    Alert.alert('Save Transcription', 'Transcription saved successfully!', [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
   };
 
   // Timer and waveform animation effect
@@ -168,12 +307,25 @@ export default function RecordScreen() {
           <View style={styles.statusRow}>
             <Animated.View style={[styles.recordingIndicator, animatedRecordingStyle]} />
             <Text style={styles.recordingStatus}>
-              {!isRecording ? 'Ready to record' : isPaused ? 'Recording paused' : 'Recording...'}
+              {!isModelLoaded
+                ? 'Loading model...'
+                : !isRecording
+                  ? 'Ready to record'
+                  : isPaused
+                    ? 'Recording paused'
+                    : 'Recording...'}
             </Text>
           </View>
         </Animated.View>
 
         <View style={styles.waveformContainer}>{waveformBars}</View>
+
+        {transcription.length > 0 && (
+          <View style={styles.transcriptionContainer}>
+            <Text style={styles.transcriptionTitle}>Transcription</Text>
+            <Text style={styles.transcriptionText}>{transcription}</Text>
+          </View>
+        )}
 
         <View style={styles.controlsContainer}>
           <TouchableOpacity
@@ -200,12 +352,17 @@ export default function RecordScreen() {
           </Animated.View>
 
           <TouchableOpacity
-            style={[styles.controlButton, styles.secondaryButton, !isRecording && { opacity: 0.5 }]}
-            disabled={!isRecording}>
+            style={[
+              styles.controlButton,
+              styles.secondaryButton,
+              !transcription ? { opacity: 0.5 } : {},
+            ]}
+            disabled={!transcription}
+            onPress={handleSave}>
             <Icons.Feather
               name="save"
               size={28}
-              color={!isRecording ? theme.colors.typography : theme.colors.primary}
+              color={!transcription ? theme.colors.typography : theme.colors.primary}
             />
           </TouchableOpacity>
         </View>
@@ -279,11 +436,29 @@ const styles = StyleSheet.create((theme, rt) => ({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 60,
-    marginVertical: theme.spacing(10),
+    marginVertical: theme.spacing(4),
   },
   waveformBar: {
     width: rt.screen.width / 40,
     borderRadius: 2,
+  },
+  transcriptionContainer: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: theme.spacing(3),
+    padding: theme.spacing(3),
+    marginVertical: theme.spacing(4),
+    maxHeight: 150,
+  },
+  transcriptionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.limedSpruce,
+    marginBottom: theme.spacing(2),
+  },
+  transcriptionText: {
+    fontSize: 14,
+    color: theme.colors.typography,
+    lineHeight: 20,
   },
   controlsContainer: {
     flexDirection: 'row',
