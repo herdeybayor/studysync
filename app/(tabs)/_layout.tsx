@@ -11,7 +11,7 @@ export default function TabLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Icons name="home" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Icons name="home-outline" size={20} color={color} />,
           tabBarLabel: 'Home',
           tabBarLabelStyle: { fontSize: 12 },
         }}
@@ -20,7 +20,7 @@ export default function TabLayout() {
         name="calendar"
         options={{
           title: 'Calendar',
-          tabBarIcon: ({ color }) => <Icons name="calendar" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Icons name="calendar-outline" size={20} color={color} />,
           tabBarLabel: 'Calendar',
           tabBarLabelStyle: { fontSize: 12 },
         }}
@@ -29,7 +29,7 @@ export default function TabLayout() {
         name="recordings"
         options={{
           title: 'Recordings',
-          tabBarIcon: ({ color }) => <Icons name="recording" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Icons name="mic-outline" size={20} color={color} />,
           tabBarLabel: 'Recordings',
           tabBarLabelStyle: { fontSize: 12 },
         }}
@@ -38,7 +38,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Icons name="person" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Icons name="person-outline" size={20} color={color} />,
           tabBarLabel: 'Profile',
           tabBarLabelStyle: { fontSize: 12 },
         }}
