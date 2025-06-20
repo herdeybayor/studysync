@@ -4,6 +4,7 @@ const sharedColors = {
   cornflowerBlue: '#6366F1',
   astral: '#2E78B7',
   primary: '#2F80ED',
+  accent: '#56CCF2',
 } as const;
 
 export const lightTheme = {

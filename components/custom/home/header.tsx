@@ -8,7 +8,7 @@ import { Icons } from '~/components/ui/icons';
 import { AppSettings } from '~/db/schema';
 import { Image } from '~/components/ui/image';
 
-export default function HomeHeader({ appSettings }: { appSettings: AppSettings }) {
+export function Header({ appSettings }: { appSettings: AppSettings }) {
   const { theme } = useUnistyles();
 
   return (
@@ -65,12 +65,16 @@ export default function HomeHeader({ appSettings }: { appSettings: AppSettings }
               id: 1,
               title: 'Attend PSY 101 Class',
               timestamp: 1718851200,
+              from: '10:00 AM',
+              to: '11:00 AM',
               onPress: () => {},
             },
             {
               id: 2,
               title: 'Attend PSY 101 Class',
               timestamp: 1718851200,
+              from: '10:00 AM',
+              to: '11:00 AM',
               onPress: () => {},
             },
           ].map((item) => (
@@ -84,7 +88,7 @@ export default function HomeHeader({ appSettings }: { appSettings: AppSettings }
                 </View>
                 <View style={styles.calendarItemTime}>
                   <Text style={styles.calendarItemTimeText}>
-                    {format(item.timestamp, 'h:mm a')}
+                    {item.from} - {item.to}
                   </Text>
                 </View>
               </View>
@@ -217,7 +221,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.spacing(2),
   },
   calendarItemTimeText: {
-    fontSize: 14,
+    fontSize: 8,
     color: theme.colors.primary,
   },
 }));
