@@ -1,6 +1,16 @@
 import { relations } from 'drizzle-orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
+export const appSettings = sqliteTable('app_settings', {
+  id: integer('id').primaryKey().default(1).notNull(), // Fixed ID to ensure single entry
+  firstName: text('first_name'),
+  lastName: text('last_name'),
+  username: text('username'),
+  preferences: text('preferences', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
 export const folders = sqliteTable('folders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
@@ -35,6 +45,9 @@ export const summaries = sqliteTable('summaries', {
 /**
  * Types
  */
+
+export type AppSettings = typeof appSettings.$inferSelect;
+export type NewAppSettings = typeof appSettings.$inferInsert;
 
 export type Folder = typeof folders.$inferSelect;
 export type NewFolder = typeof folders.$inferInsert;
