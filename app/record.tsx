@@ -185,14 +185,13 @@ export default function RecordScreen() {
           language: 'en',
           realtimeAudioSec: 300, // 5 minutes max recording time
           realtimeAudioSliceSec: 30, // Process in 30-second chunks for performance
+          maxThreads: 4, // Optimize CPU usage
+          useVad: true, // Use Voice Activity Detection for better performance (to detect when someone is actually speaking)
         };
         const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
 
-        // Initialize with null unsubscribe function
-        setRealtimeTranscribe({ stop, unsubscribe: null });
-
         // Subscribe to transcription events
-        subscribe((event: TranscribeRealtimeEvent) => {
+        const unsubscribeCallback = subscribe((event: TranscribeRealtimeEvent) => {
           const { isCapturing, data } = event;
 
           // Update transcription text
@@ -206,6 +205,12 @@ export default function RecordScreen() {
             setIsPaused(false);
             recordingOpacity.value = withTiming(0);
           }
+        });
+
+        // Store both stop and unsubscribe functions
+        setRealtimeTranscribe({
+          stop,
+          unsubscribe: typeof unsubscribeCallback === 'function' ? unsubscribeCallback : null,
         });
 
         setIsRecording(true);
