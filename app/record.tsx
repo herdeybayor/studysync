@@ -19,14 +19,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import {
-  initWhisper,
-  type TranscribeRealtimeEvent,
-  type TranscribeRealtimeOptions,
-  type WhisperContext,
-} from 'whisper.rn';
+import { type TranscribeRealtimeEvent, type TranscribeRealtimeOptions } from 'whisper.rn';
 
 import { Icons } from '~/components/ui/icons';
+import { useWhisperModel } from '~/lib/whisper-models';
 
 const WAVEFORM_COUNT = 30;
 
@@ -42,8 +38,12 @@ export default function RecordScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcription, setTranscription] = useState('');
-  const [isModelLoaded, setIsModelLoaded] = useState(false);
-  const [whisperContext, setWhisperContext] = useState<WhisperContext | null>(null);
+  const {
+    whisperContext,
+    isLoading: isModelLoading,
+    error: modelError,
+    modelInfo,
+  } = useWhisperModel();
   const [realtimeTranscribe, setRealtimeTranscribe] = useState<RealtimeTranscribe | null>(null);
 
   // Animated values
@@ -51,40 +51,14 @@ export default function RecordScreen() {
   const recordingOpacity = useSharedValue(0);
   const waveformValues = useSharedValue(Array(WAVEFORM_COUNT).fill(4));
 
-  // Load whisper model
+  // Cleanup on component unmount
   useEffect(() => {
-    if (isModelLoaded) return;
-
-    async function loadModel() {
-      try {
-        // Initialize whisper with the tiny model
-        const context = await initWhisper({
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          filePath: require('../assets/ggml-tiny.en.bin'),
-        });
-        setWhisperContext(context);
-        setIsModelLoaded(true);
-      } catch (error) {
-        console.error('Failed to load whisper model:', error);
-        Alert.alert(
-          'Model Load Error',
-          'Failed to load the speech recognition model. Please restart the app.'
-        );
-      }
-    }
-
-    loadModel();
-
-    // Cleanup on component unmount
     return () => {
       if (realtimeTranscribe) {
         realtimeTranscribe.stop();
       }
-      if (whisperContext) {
-        whisperContext.release();
-      }
     };
-  }, [isModelLoaded, realtimeTranscribe, whisperContext]);
+  }, [realtimeTranscribe]);
 
   // Check and request microphone permissions
   const requestMicrophonePermission = async () => {
@@ -162,7 +136,7 @@ export default function RecordScreen() {
       withTiming(1, { duration: 100 })
     );
 
-    if (!isModelLoaded) {
+    if (!whisperContext) {
       Alert.alert('Model not ready', 'Please wait for the speech recognition model to load.');
       return;
     }
@@ -177,10 +151,6 @@ export default function RecordScreen() {
       }
 
       try {
-        if (!whisperContext) {
-          throw new Error('Whisper context not initialized');
-        }
-
         const options: TranscribeRealtimeOptions = {
           language: 'en',
           realtimeAudioSec: 300, // 5 minutes max recording time
@@ -301,31 +271,40 @@ export default function RecordScreen() {
     };
   }, [isRecording, isPaused, waveformValues]);
 
+  // Open models management screen
+  const openModelsScreen = () => {
+    router.navigate('/models');
+  };
+
+  const recordingStatus = useMemo(() => {
+    if (isModelLoading) return 'Loading model...';
+    if (modelError) return 'Error loading model';
+    if (!whisperContext) return 'Model not ready';
+    if (!modelInfo) return 'Model not ready';
+    if (!isRecording) return 'Ready to record';
+    if (isPaused) return 'Recording paused';
+    return 'Recording...';
+  }, [isModelLoading, isRecording, isPaused, modelError, modelInfo, whisperContext]);
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
+      {/* Header with Models button */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-          <Icons.Feather name="x" size={24} color={theme.colors.white} />
+        <TouchableOpacity style={styles.modelButton} onPress={openModelsScreen}>
+          <Icons name="settings" size={22} color={theme.colors.primary} />
+          <Text style={styles.modelButtonText}>Models</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Record Lecture</Text>
       </View>
 
       <View style={styles.content}>
+        <Text style={styles.title}>Record Lecture</Text>
         <Animated.View style={styles.timerContainer} entering={FadeIn.duration(600)}>
           <Text style={styles.timer}>{formatTime(recordingTime)}</Text>
           <View style={styles.statusRow}>
             <Animated.View style={[styles.recordingIndicator, animatedRecordingStyle]} />
-            <Text style={styles.recordingStatus}>
-              {!isModelLoaded
-                ? 'Loading model...'
-                : !isRecording
-                  ? 'Ready to record'
-                  : isPaused
-                    ? 'Recording paused'
-                    : 'Recording...'}
-            </Text>
+            <Text style={styles.recordingStatus}>{recordingStatus}</Text>
           </View>
         </Animated.View>
 
@@ -382,29 +361,32 @@ export default function RecordScreen() {
   );
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: theme.spacing(6),
-    paddingBottom: theme.spacing(4),
-    backgroundColor: theme.colors.primary,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  closeButton: {
-    position: 'absolute',
-    left: theme.spacing(4),
-    top: theme.spacing(5),
-    width: theme.spacing(8),
-    height: theme.spacing(8),
-    borderRadius: theme.spacing(5),
-    justifyContent: 'center',
+  modelButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  modelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginLeft: 6,
   },
   title: {
     fontSize: 18,
@@ -450,7 +432,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     marginVertical: theme.spacing(4),
   },
   waveformBar: {
-    width: rt.screen.width / 40,
+    width: 8,
     borderRadius: 2,
   },
   transcriptionContainer: {

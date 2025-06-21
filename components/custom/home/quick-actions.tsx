@@ -18,10 +18,10 @@ export function QuickActions() {
           onPress: () => router.navigate('/record'),
         },
         {
-          title: 'Get Transcript',
+          title: 'Models',
           icon: require('~/assets/images/transcript-button.png'),
           backgroundColor: theme.colors.accent,
-          onPress: () => {},
+          onPress: () => router.navigate('/models'),
         },
       ].map((item) => (
         <TouchableOpacity

@@ -73,7 +73,18 @@ export default function RootLayout() {
               animation: 'slide_from_bottom',
               sheetGrabberVisible: true,
               sheetInitialDetentIndex: 0,
-              sheetAllowedDetents: [0.5],
+              sheetAllowedDetents: [0.5, 1],
+              sheetCornerRadius: 24,
+              sheetElevation: 10,
+            }}
+          />
+          <Stack.Screen
+            name="models"
+            options={{
+              presentation: 'modal',
+              gestureDirection: 'vertical',
+              animation: 'slide_from_bottom',
+              sheetGrabberVisible: true,
               sheetCornerRadius: 24,
               sheetElevation: 10,
             }}
