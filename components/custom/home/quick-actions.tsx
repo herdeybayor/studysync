@@ -56,7 +56,8 @@ const styles = StyleSheet.create((theme, rt) => ({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing(4),
+    gap: theme.spacing(2),
+    justifyContent: 'space-between',
   },
   cardHeaderText: {
     fontSize: 16,
