@@ -181,7 +181,11 @@ export default function RecordScreen() {
           throw new Error('Whisper context not initialized');
         }
 
-        const options: TranscribeRealtimeOptions = { language: 'en' };
+        const options: TranscribeRealtimeOptions = {
+          language: 'en',
+          realtimeAudioSec: 300, // 5 minutes max recording time
+          realtimeAudioSliceSec: 30, // Process in 30-second chunks for performance
+        };
         const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
 
         // Initialize with null unsubscribe function
