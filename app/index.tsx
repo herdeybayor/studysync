@@ -123,7 +123,8 @@ const styles = StyleSheet.create((theme, { screen }) => ({
   wrapper: {
     flex: 1,
     paddingHorizontal: theme.margins.screen,
-    paddingTop: theme.margins.screen,
+    paddingTop: theme.spacing(4),
+    paddingBottom: theme.margins.screen,
   },
   header: {
     backgroundColor: theme.colors.white,
@@ -139,7 +140,7 @@ const styles = StyleSheet.create((theme, { screen }) => ({
   },
   content: {
     marginTop: theme.spacing(3),
-    padding: theme.spacing(7),
+    padding: theme.spacing(4),
     borderRadius: 30,
     backgroundColor: theme.colors.white,
   },
