@@ -53,6 +53,8 @@ export default function RecordScreen() {
 
   // Load whisper model
   useEffect(() => {
+    if (isModelLoaded) return;
+
     async function loadModel() {
       try {
         // Initialize whisper with the tiny model
@@ -82,7 +84,7 @@ export default function RecordScreen() {
         whisperContext.release();
       }
     };
-  }, [realtimeTranscribe, whisperContext]);
+  }, [isModelLoaded, realtimeTranscribe, whisperContext]);
 
   // Check and request microphone permissions
   const requestMicrophonePermission = async () => {
