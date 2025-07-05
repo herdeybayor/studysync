@@ -2,13 +2,12 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { Stack } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
-import { Suspense, useEffect } from 'react';
+import { Suspense } from 'react';
 
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { DATABASE_NAME } from '~/db/constant';
 
 import migrations from '~/drizzle/migrations';
-import { useModelStore } from '~/lib/whisper-models';
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
@@ -34,13 +33,6 @@ const LoadingScreen = () => {
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
-
-  const { initializeStore } = useModelStore();
-
-  useEffect(() => {
-    console.log('Initializing store...');
-    initializeStore();
-  }, [initializeStore]);
 
   if (error) {
     return (
