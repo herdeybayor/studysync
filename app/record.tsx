@@ -152,9 +152,9 @@ export default function RecordScreen() {
 
       try {
         const options: TranscribeRealtimeOptions = {
-          language: 'en',
+          // language: 'en',
           realtimeAudioSec: 300, // 5 minutes max recording time
-          realtimeAudioSliceSec: 30, // Process in 30-second chunks for performance
+          realtimeAudioSliceSec: 10, // Process in 10-second chunks for realtime feel
           maxThreads: 4, // Optimize CPU usage
           useVad: true, // Use Voice Activity Detection for better performance (to detect when someone is actually speaking)
         };

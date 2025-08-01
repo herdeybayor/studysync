@@ -526,9 +526,7 @@ export function useWhisperModel() {
 
         // Initialize with the selected model
         const filePath =
-          Platform.OS === 'ios'
-            ? modelData.path.replace('file://', '')
-            : `file://${modelData.path}`;
+          Platform.OS === 'ios' ? modelData.path.replace('file://', '') : modelData.path;
 
         console.log(`[WhisperModel] Initializing whisper with model path: ${filePath}`);
         const context = await initWhisper({
@@ -557,6 +555,7 @@ export function useWhisperModel() {
         whisperContext.release().catch(console.error);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModel, installedModels]);
 
   return {
