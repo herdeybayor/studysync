@@ -11,10 +11,11 @@ import * as schema from '~/db/schema';
 
 import type { AppSettings } from '~/db/schema';
 import { useDrizzleDb } from '~/hooks/use-drizzle';
+import { useModelStore } from '~/lib/whisper-models';
 
 export default function RootRoute() {
   const drizzleDb = useDrizzleDb();
-
+  const { initializeStore, installedModels } = useModelStore();
   const { theme } = useUnistyles();
 
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -24,6 +25,9 @@ export default function RootRoute() {
     if (appSettings) return;
 
     (async () => {
+      // Initialize model store
+      await initializeStore();
+
       // Check if app settings exist
       const settings = await drizzleDb.select().from(schema.appSettings);
 
@@ -48,16 +52,40 @@ export default function RootRoute() {
 
       setLoading(false);
     })();
-  }, [drizzleDb, appSettings]);
+  }, [drizzleDb, appSettings, initializeStore]);
 
-  // Navigate based on whether user has completed setup
+  // Navigate based on app state
   useEffect(() => {
     if (!loading && appSettings) {
-      if (appSettings.firstName && appSettings.lastName) {
-        router.replace('/home');
+      // Check if resources are downloaded (stored in preferences)
+      let preferences: any = {};
+      if (appSettings.preferences && typeof appSettings.preferences === 'string') {
+        try {
+          preferences = JSON.parse(appSettings.preferences);
+        } catch (e) {
+          console.error('Error parsing preferences:', e);
+        }
       }
+
+      // Check if base model is actually installed
+      const isModelInstalled = !!installedModels.base;
+
+      // If resources aren't downloaded or model isn't installed, go to download page
+      if (!preferences.resourcesDownloaded || !isModelInstalled) {
+        router.replace('/download-resources');
+        return;
+      }
+
+      // If user hasn't completed setup, go to setup
+      if (!appSettings.firstName || !appSettings.lastName) {
+        router.replace('/setup');
+        return;
+      }
+
+      // Otherwise, go to home
+      router.replace('/home');
     }
-  }, [appSettings, loading]);
+  }, [appSettings, loading, installedModels]);
 
   // Don't render the onboarding if we're going to redirect
   if (loading) {

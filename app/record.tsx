@@ -15,7 +15,6 @@ import { type TranscribeRealtimeEvent, type TranscribeRealtimeOptions } from 'wh
 
 import { Icons } from '~/components/ui/icons';
 import { useWhisperModel } from '~/lib/whisper-models';
-import { useRecordingSettings } from '~/hooks/use-recording-settings';
 
 const WAVEFORM_COUNT = 30;
 
@@ -37,7 +36,6 @@ export default function RecordScreen() {
     error: modelError,
     modelInfo,
   } = useWhisperModel();
-  const { settings: recordingSettings, isLoading: isSettingsLoading } = useRecordingSettings();
   const [realtimeTranscribe, setRealtimeTranscribe] = useState<RealtimeTranscribe | null>(null);
 
   // Animated values
@@ -145,29 +143,28 @@ export default function RecordScreen() {
       }
 
       try {
-        // Check if realtime is enabled in settings
-        if (!recordingSettings.whisper.enableRealtime) {
-          Alert.alert(
-            'Realtime Disabled',
-            'Realtime transcription is disabled in settings. Please enable it in Recording Settings.'
-          );
-          return;
-        }
-
+        // Pre-configured optimal settings for students
         const options: TranscribeRealtimeOptions = {
-          language:
-            recordingSettings.whisper.language !== 'auto'
-              ? recordingSettings.whisper.language
-              : undefined,
-          realtimeAudioSec: recordingSettings.whisper.realtimeAudioSec,
-          realtimeAudioSliceSec: recordingSettings.whisper.realtimeAudioSliceSec,
-          maxThreads: recordingSettings.whisper.maxThreads,
-          useVad: recordingSettings.whisper.useVad,
-          vadThold: recordingSettings.whisper.vadThold,
-          temperature: recordingSettings.whisper.temperature,
-          beamSize: recordingSettings.whisper.beamSize,
-          translate: recordingSettings.whisper.translate,
-          tokenTimestamps: recordingSettings.whisper.tokenTimestamps,
+          // Auto-detect language for multi-language support
+          language: undefined,
+          // 5 minutes max recording time - good for lecture segments
+          realtimeAudioSec: 300,
+          // 8-second chunks for good balance of speed and accuracy
+          realtimeAudioSliceSec: 8,
+          // 4 threads for good performance on most devices
+          maxThreads: 4,
+          // Voice Activity Detection to improve performance and reduce false positives
+          useVad: true,
+          // Moderate VAD threshold - not too sensitive
+          vadThold: 0.6,
+          // Low temperature for more consistent transcription
+          temperature: 0.1,
+          // Beam size 5 for good accuracy without being too slow
+          beamSize: 5,
+          // No translation by default - students usually record in their native language
+          translate: false,
+          // Enable timestamps for better note-taking
+          tokenTimestamps: true,
         };
         const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
 
@@ -282,48 +279,21 @@ export default function RecordScreen() {
     };
   }, [isRecording, isPaused, waveformValues]);
 
-  // Open models management screen
-  const openModelsScreen = () => {
-    router.navigate('/models');
-  };
-
-  // Open recording settings screen
-  const openRecordingSettings = () => {
-    router.navigate('/recording-settings');
-  };
-
   const recordingStatus = useMemo(() => {
-    if (isModelLoading || isSettingsLoading) return 'Loading...';
+    if (isModelLoading) return 'Loading model...';
     if (modelError) return 'Error loading model';
     if (!whisperContext) return 'Model not ready';
     if (!modelInfo) return 'Model not ready';
-    if (!recordingSettings.whisper.enableRealtime) return 'Realtime disabled';
     if (!isRecording) return 'Ready to record';
     if (isPaused) return 'Recording paused';
     return 'Recording...';
-  }, [
-    isModelLoading,
-    isSettingsLoading,
-    isRecording,
-    isPaused,
-    modelError,
-    modelInfo,
-    whisperContext,
-    recordingSettings.whisper.enableRealtime,
-  ]);
+  }, [isModelLoading, isRecording, isPaused, modelError, modelInfo, whisperContext]);
 
   return (
     <View style={styles.container}>
-      {/* Header with Models and Settings buttons */}
+      {/* Simple header for students */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.modelButton} onPress={openModelsScreen}>
-          <Icons name="settings" size={20} color={theme.colors.primary} />
-          <Text style={styles.modelButtonText}>Models</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.modelButton} onPress={openRecordingSettings}>
-          <Icons.Feather name="sliders" size={20} color={theme.colors.primary} />
-          <Text style={styles.modelButtonText}>Settings</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>StudySync</Text>
       </View>
 
       <View style={styles.content}>
@@ -334,6 +304,13 @@ export default function RecordScreen() {
             <Animated.View style={[styles.recordingIndicator, animatedRecordingStyle]} />
             <Text style={styles.recordingStatus}>{recordingStatus}</Text>
           </View>
+          {modelError && (
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => router.navigate('/download-resources')}>
+              <Text style={styles.retryButtonText}>Download Resources</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         <View style={styles.waveformContainer}>{waveformBars}</View>
@@ -396,26 +373,16 @@ const styles = StyleSheet.create((theme) => ({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingTop: Platform.OS === 'ios' ? 50 : 16,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    gap: 12,
   },
-  modelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  modelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: theme.colors.primary,
-    marginLeft: 6,
   },
   title: {
     fontSize: 18,
@@ -504,5 +471,18 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: 'rgba(0,0,0,0.1)',
     width: theme.spacing(14),
     height: theme.spacing(14),
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing(4),
+    paddingVertical: theme.spacing(2),
+    borderRadius: theme.spacing(2),
+    marginTop: theme.spacing(2),
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 }));
