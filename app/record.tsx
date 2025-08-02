@@ -15,6 +15,7 @@ import { type TranscribeRealtimeEvent, type TranscribeRealtimeOptions } from 'wh
 
 import { Icons } from '~/components/ui/icons';
 import { useWhisperModel } from '~/lib/whisper-models';
+import { useRecordingSettings } from '~/hooks/use-recording-settings';
 
 const WAVEFORM_COUNT = 30;
 
@@ -36,6 +37,7 @@ export default function RecordScreen() {
     error: modelError,
     modelInfo,
   } = useWhisperModel();
+  const { settings: recordingSettings, isLoading: isSettingsLoading } = useRecordingSettings();
   const [realtimeTranscribe, setRealtimeTranscribe] = useState<RealtimeTranscribe | null>(null);
 
   // Animated values
@@ -143,12 +145,29 @@ export default function RecordScreen() {
       }
 
       try {
+        // Check if realtime is enabled in settings
+        if (!recordingSettings.whisper.enableRealtime) {
+          Alert.alert(
+            'Realtime Disabled',
+            'Realtime transcription is disabled in settings. Please enable it in Recording Settings.'
+          );
+          return;
+        }
+
         const options: TranscribeRealtimeOptions = {
-          // language: 'en',
-          realtimeAudioSec: 300, // 5 minutes max recording time
-          realtimeAudioSliceSec: 10, // Process in 10-second chunks for realtime feel
-          maxThreads: 4, // Optimize CPU usage
-          useVad: true, // Use Voice Activity Detection for better performance (to detect when someone is actually speaking)
+          language:
+            recordingSettings.whisper.language !== 'auto'
+              ? recordingSettings.whisper.language
+              : undefined,
+          realtimeAudioSec: recordingSettings.whisper.realtimeAudioSec,
+          realtimeAudioSliceSec: recordingSettings.whisper.realtimeAudioSliceSec,
+          maxThreads: recordingSettings.whisper.maxThreads,
+          useVad: recordingSettings.whisper.useVad,
+          vadThold: recordingSettings.whisper.vadThold,
+          temperature: recordingSettings.whisper.temperature,
+          beamSize: recordingSettings.whisper.beamSize,
+          translate: recordingSettings.whisper.translate,
+          tokenTimestamps: recordingSettings.whisper.tokenTimestamps,
         };
         const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
 
@@ -268,23 +287,42 @@ export default function RecordScreen() {
     router.navigate('/models');
   };
 
+  // Open recording settings screen
+  const openRecordingSettings = () => {
+    router.navigate('/recording-settings');
+  };
+
   const recordingStatus = useMemo(() => {
-    if (isModelLoading) return 'Loading model...';
+    if (isModelLoading || isSettingsLoading) return 'Loading...';
     if (modelError) return 'Error loading model';
     if (!whisperContext) return 'Model not ready';
     if (!modelInfo) return 'Model not ready';
+    if (!recordingSettings.whisper.enableRealtime) return 'Realtime disabled';
     if (!isRecording) return 'Ready to record';
     if (isPaused) return 'Recording paused';
     return 'Recording...';
-  }, [isModelLoading, isRecording, isPaused, modelError, modelInfo, whisperContext]);
+  }, [
+    isModelLoading,
+    isSettingsLoading,
+    isRecording,
+    isPaused,
+    modelError,
+    modelInfo,
+    whisperContext,
+    recordingSettings.whisper.enableRealtime,
+  ]);
 
   return (
     <View style={styles.container}>
-      {/* Header with Models button */}
+      {/* Header with Models and Settings buttons */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.modelButton} onPress={openModelsScreen}>
-          <Icons name="settings" size={22} color={theme.colors.primary} />
+          <Icons name="settings" size={20} color={theme.colors.primary} />
           <Text style={styles.modelButtonText}>Models</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.modelButton} onPress={openRecordingSettings}>
+          <Icons.Feather name="sliders" size={20} color={theme.colors.primary} />
+          <Text style={styles.modelButtonText}>Settings</Text>
         </TouchableOpacity>
       </View>
 
@@ -363,6 +401,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingTop: Platform.OS === 'ios' ? 50 : 16,
     paddingHorizontal: 16,
     paddingBottom: 16,
+    gap: 12,
   },
   modelButton: {
     flexDirection: 'row',
@@ -381,7 +420,7 @@ const styles = StyleSheet.create((theme) => ({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.white,
+    color: theme.colors.typography,
   },
   content: {
     flex: 1,
