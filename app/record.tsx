@@ -1,6 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, PermissionsAndroid, Platform, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  PermissionsAndroid,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -144,29 +153,32 @@ export default function RecordScreen() {
 
       try {
         // Pre-configured optimal settings for students
-        const options: TranscribeRealtimeOptions = {
-          // Auto-detect language for multi-language support
-          language: undefined,
-          // 5 minutes max recording time - good for lecture segments
+        // const options: TranscribeRealtimeOptions = {
+        //   // Auto-detect language for multi-language support
+        //   language: undefined,
+        //   // 5 minutes max recording time - good for lecture segments
+        //   realtimeAudioSec: 300,
+        //   // 8-second chunks for good balance of speed and accuracy
+        //   realtimeAudioSliceSec: 8,
+        //   // 4 threads for good performance on most devices
+        //   maxThreads: 4,
+        //   // Voice Activity Detection to improve performance and reduce false positives
+        //   useVad: true,
+        //   // Moderate VAD threshold - not too sensitive
+        //   vadThold: 0.6,
+        //   // Low temperature for more consistent transcription
+        //   temperature: 0.1,
+        //   // Beam size 5 for good accuracy without being too slow
+        //   beamSize: 5,
+        //   // No translation by default - students usually record in their native language
+        //   translate: false,
+        //   // Enable timestamps for better note-taking
+        //   tokenTimestamps: true,
+        // };
+        const { stop, subscribe } = await whisperContext.transcribeRealtime({
           realtimeAudioSec: 300,
-          // 8-second chunks for good balance of speed and accuracy
-          realtimeAudioSliceSec: 8,
-          // 4 threads for good performance on most devices
-          maxThreads: 4,
-          // Voice Activity Detection to improve performance and reduce false positives
-          useVad: true,
-          // Moderate VAD threshold - not too sensitive
-          vadThold: 0.6,
-          // Low temperature for more consistent transcription
-          temperature: 0.1,
-          // Beam size 5 for good accuracy without being too slow
-          beamSize: 5,
-          // No translation by default - students usually record in their native language
-          translate: false,
-          // Enable timestamps for better note-taking
-          tokenTimestamps: true,
-        };
-        const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
+          // tokenTimestamps: true,
+        });
 
         // Subscribe to transcription events
         const unsubscribeCallback = subscribe((event: TranscribeRealtimeEvent) => {
@@ -295,15 +307,16 @@ export default function RecordScreen() {
     return 'Recording...';
   }, [isModelLoading, isRecording, isPaused, modelError, modelInfo, whisperContext]);
 
+  const [isTranscriptionExpanded, setIsTranscriptionExpanded] = useState(true);
+
   return (
     <View style={styles.container}>
       {/* Simple header for students */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>StudySync</Text>
+        <Text style={styles.headerTitle}>Record Lecture</Text>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.title}>Record Lecture</Text>
         <Animated.View style={styles.timerContainer} entering={FadeIn.duration(600)}>
           <Text style={styles.timer}>{formatTime(recordingTime)}</Text>
           <View style={styles.statusRow}>
@@ -320,13 +333,6 @@ export default function RecordScreen() {
         </Animated.View>
 
         <View style={styles.waveformContainer}>{waveformBars}</View>
-
-        {transcription.length > 0 && (
-          <View style={styles.transcriptionContainer}>
-            <Text style={styles.transcriptionTitle}>Transcription</Text>
-            <Text style={styles.transcriptionText}>{transcription}</Text>
-          </View>
-        )}
 
         <View style={styles.controlsContainer}>
           <TouchableOpacity
@@ -367,6 +373,30 @@ export default function RecordScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {transcription.length > 0 && (
+          <View style={styles.transcriptionContainer}>
+            <View style={styles.transcriptionHeader}>
+              <Text style={styles.transcriptionTitle}>Transcription</Text>
+              <TouchableOpacity
+                onPress={() => setIsTranscriptionExpanded(!isTranscriptionExpanded)}>
+                <Ionicons
+                  name={isTranscriptionExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={24}
+                  color={theme.colors.primary}
+                  style={styles.transcriptionChevron}
+                />
+              </TouchableOpacity>
+            </View>
+            {isTranscriptionExpanded && (
+              <ScrollView
+                contentContainerStyle={styles.transcriptionContent}
+                showsVerticalScrollIndicator={false}>
+                <Text style={styles.transcriptionText}>{transcription}</Text>
+              </ScrollView>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -398,11 +428,11 @@ const styles = StyleSheet.create((theme) => ({
   content: {
     flex: 1,
     padding: theme.spacing(5),
-    justifyContent: 'space-between',
+    // justifyContent: 'space-between',
+    gap: theme.spacing(4),
   },
   timerContainer: {
     alignItems: 'center',
-    marginTop: theme.spacing(10),
   },
   timer: {
     fontSize: 56,
@@ -431,18 +461,31 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 60,
-    marginVertical: theme.spacing(4),
+    marginVertical: theme.spacing(2),
   },
   waveformBar: {
     width: 8,
     borderRadius: 2,
   },
   transcriptionContainer: {
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.03)',
     borderRadius: theme.spacing(3),
     padding: theme.spacing(3),
     marginVertical: theme.spacing(4),
-    maxHeight: 150,
+  },
+  transcriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  transcriptionChevron: {
+    transform: [{ rotate: '180deg' }],
+  },
+  transcriptionContent: {
+    // flex: 1,
+    paddingBottom: theme.spacing(10),
+    paddingTop: theme.spacing(2),
   },
   transcriptionTitle: {
     fontSize: 14,
@@ -459,7 +502,6 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     justifyContent: 'space-evenly',
     alignItems: 'center',
-    marginBottom: theme.spacing(10),
   },
   controlButton: {
     justifyContent: 'center',

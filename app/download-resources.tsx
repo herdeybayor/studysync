@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Text, TouchableOpacity, View, Alert } from 'react-native';
+import { Text, TouchableOpacity, View, Alert, ScrollView } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { eq } from 'drizzle-orm';
@@ -157,47 +157,112 @@ export default function DownloadResourcesScreen() {
 
   const isDownloading =
     whisperDownloadState?.isDownloading || llamaDownloadState?.isDownloading || false;
-  const downloadProgress = Math.round((whisperDownloadState?.progress || 0) * 100);
+
+  // Calculate combined progress (average of both models)
+  const whisperProgress = whisperDownloadState?.progress || 0;
+  const llamaProgress = llamaDownloadState?.progress || 0;
+  const downloadProgress = Math.round(((whisperProgress + llamaProgress) / 2) * 100);
+
   const downloadError = whisperDownloadState?.error || llamaDownloadState?.error;
+  const totalSize = whisperModelInfo.size + llamaModelInfo.size;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View style={styles.header} entering={FadeInUp.duration(600)}>
           <View style={styles.iconContainer}>
             <Icons.Feather name="download" size={48} color={theme.colors.primary} />
           </View>
-          <Text style={styles.title}>Download Additional Resources</Text>
+          <Text style={styles.title}>Download AI Resources</Text>
           <Text style={styles.subtitle}>
-            StudySync needs to download the speech recognition model to transcribe your lectures.
-            This is a one-time download of about {whisperModelInfo.size}MB.
+            StudySync needs to download two AI models to power your study sessions. This is a
+            one-time download of about {totalSize}MB.
           </Text>
         </Animated.View>
 
-        <Animated.View style={styles.features} entering={FadeIn.duration(800).delay(200)}>
-          <View style={styles.feature}>
-            <View style={styles.featureIcon}>
+        {/* What's being downloaded */}
+        <Animated.View style={styles.modelsSection} entering={FadeIn.duration(800).delay(200)}>
+          <Text style={styles.modelsTitle}>What&apos;s included:</Text>
+
+          <View style={styles.modelCard}>
+            <View style={styles.modelIcon}>
               <Icons.Feather name="mic" size={20} color={theme.colors.primary} />
             </View>
-            <Text style={styles.featureText}>High-quality speech recognition</Text>
+            <View style={styles.modelInfo}>
+              <Text style={styles.modelName}>Speech Recognition Model</Text>
+              <Text style={styles.modelDescription}>
+                Whisper Base ({whisperModelInfo.size}MB) - Converts your voice to text in real-time
+              </Text>
+            </View>
           </View>
-          <View style={styles.feature}>
-            <View style={styles.featureIcon}>
+
+          <View style={styles.modelCard}>
+            <View style={styles.modelIcon}>
               <Icons.Feather name="zap" size={20} color={theme.colors.primary} />
             </View>
-            <Text style={styles.featureText}>Real-time transcription</Text>
+            <View style={styles.modelInfo}>
+              <Text style={styles.modelName}>AI Assistant Model</Text>
+              <Text style={styles.modelDescription}>
+                Qwen 2.5 ({llamaModelInfo.size}MB) - Generates summaries and smart titles
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={styles.features} entering={FadeIn.duration(800).delay(300)}>
+          <View style={styles.feature}>
+            <View style={styles.featureIcon}>
+              <Icons.Feather name="shield" size={20} color="#10B981" />
+            </View>
+            <Text style={styles.featureText}>
+              100% offline - your data never leaves your device
+            </Text>
           </View>
           <View style={styles.feature}>
             <View style={styles.featureIcon}>
-              <Icons.Feather name="shield" size={20} color={theme.colors.primary} />
+              <Icons.Feather name="clock" size={20} color="#10B981" />
             </View>
-            <Text style={styles.featureText}>Works offline - your data stays private</Text>
+            <Text style={styles.featureText}>Real-time transcription during lectures</Text>
+          </View>
+          <View style={styles.feature}>
+            <View style={styles.featureIcon}>
+              <Icons.Feather name="edit-3" size={20} color="#10B981" />
+            </View>
+            <Text style={styles.featureText}>AI-powered summaries and smart organization</Text>
           </View>
         </Animated.View>
 
         {isDownloading && (
           <Animated.View style={styles.progressContainer} entering={FadeIn.duration(300)}>
-            <Text style={styles.progressText}>Downloading... {downloadProgress}%</Text>
+            <Text style={styles.progressText}>Downloading AI models... {downloadProgress}%</Text>
+            <View style={styles.progressDetailsContainer}>
+              <View style={styles.progressDetail}>
+                <Text style={styles.progressDetailText}>
+                  Speech Recognition: {Math.round(whisperProgress * 100)}%
+                </Text>
+                <View style={styles.progressBarSmall}>
+                  <View
+                    style={[
+                      styles.progressFillSmall,
+                      { width: `${Math.round(whisperProgress * 100)}%` },
+                    ]}
+                  />
+                </View>
+              </View>
+              <View style={styles.progressDetail}>
+                <Text style={styles.progressDetailText}>
+                  AI Assistant: {Math.round(llamaProgress * 100)}%
+                </Text>
+                <View style={styles.progressBarSmall}>
+                  <View
+                    style={[
+                      styles.progressFillSmall,
+                      { width: `${Math.round(llamaProgress * 100)}%` },
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${downloadProgress}%` }]} />
             </View>
@@ -223,7 +288,7 @@ export default function DownloadResourcesScreen() {
             </Text>
           )}
         </Animated.View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -234,8 +299,9 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.background,
   },
   content: {
-    flex: 1,
-    padding: theme.spacing(6),
+    // flex: 1,
+    paddingHorizontal: theme.spacing(6),
+    paddingBottom: theme.spacing(6),
     justifyContent: 'space-between',
   },
   header: {
@@ -265,9 +331,51 @@ const styles = StyleSheet.create((theme) => ({
     lineHeight: 24,
     maxWidth: 320,
   },
+  modelsSection: {
+    marginVertical: theme.spacing(6),
+  },
+  modelsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.typography,
+    marginBottom: theme.spacing(4),
+  },
+  modelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.white,
+    padding: theme.spacing(4),
+    borderRadius: theme.spacing(3),
+    marginBottom: theme.spacing(3),
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    gap: theme.spacing(3),
+  },
+  modelIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(47, 128, 237, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modelInfo: {
+    flex: 1,
+  },
+  modelName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.typography,
+    marginBottom: theme.spacing(1),
+  },
+  modelDescription: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
+    lineHeight: 20,
+  },
   features: {
     gap: theme.spacing(4),
-    marginVertical: theme.spacing(8),
+    marginVertical: theme.spacing(6),
   },
   feature: {
     flexDirection: 'row',
@@ -295,6 +403,32 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: 16,
     color: theme.colors.typography,
     marginBottom: theme.spacing(3),
+    fontWeight: '600',
+  },
+  progressDetailsContainer: {
+    width: '100%',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(4),
+  },
+  progressDetail: {
+    width: '100%',
+  },
+  progressDetailText: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
+    marginBottom: theme.spacing(1),
+  },
+  progressBarSmall: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFillSmall: {
+    height: '100%',
+    backgroundColor: 'rgba(47, 128, 237, 0.7)',
+    borderRadius: 2,
   },
   progressBar: {
     width: '100%',

@@ -75,6 +75,7 @@ export const useLlamaModelStore = create<LlamaModelState>((set, get) => ({
       // Create llama models directory if it doesn't exist
       const modelsDir = `${FileSystem.documentDirectory}llama_models`;
       const dirInfo = await FileSystem.getInfoAsync(modelsDir);
+
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(modelsDir);
       }
@@ -553,7 +554,6 @@ export function useLlamaModel() {
         llamaContext.release().catch(console.error);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModel, installedModels]);
 
   return {

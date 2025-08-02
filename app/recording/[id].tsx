@@ -59,7 +59,7 @@ export default function RecordingDetailScreen() {
   };
 
   const handleGenerateBetterTitle = async () => {
-    if (!recording || !aiNaming || recording.transcripts.length === 0) return;
+    if (!recording || !aiNaming || recording.transcripts.length === 0 || !llamaContext) return;
 
     setIsGeneratingBetterTitle(true);
     try {
@@ -77,7 +77,7 @@ export default function RecordingDetailScreen() {
   };
 
   const handleGenerateSummary = async () => {
-    if (!recording || !aiNaming || recording.transcripts.length === 0) return;
+    if (!recording || !aiNaming || recording.transcripts.length === 0 || !llamaContext) return;
 
     setIsGeneratingSummary(true);
     try {
@@ -203,7 +203,7 @@ ${summary ? `Summary:\n${summary}\n\n` : ''}${transcript ? `Transcript:\n${trans
             )}
 
             {/* AI Title Suggestions */}
-            {!isEditing && recording.transcripts.length > 0 && (
+            {!isEditing && recording.transcripts.length > 0 && llamaContext && (
               <View style={styles.aiTitleSection}>
                 <TouchableOpacity
                   style={styles.aiButton}
@@ -263,7 +263,7 @@ ${summary ? `Summary:\n${summary}\n\n` : ''}${transcript ? `Transcript:\n${trans
         )}
 
         {/* Generate Summary Button */}
-        {recording.transcripts.length > 0 && recording.summaries.length === 0 && llamaContext && (
+        {recording.transcripts.length > 0 && llamaContext && (
           <Animated.View style={styles.section} entering={FadeInUp.duration(600).delay(300)}>
             <TouchableOpacity
               style={styles.generateSummaryButton}

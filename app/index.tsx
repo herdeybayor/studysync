@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
@@ -11,11 +11,15 @@ import * as schema from '~/db/schema';
 
 import type { AppSettings } from '~/db/schema';
 import { useDrizzleDb } from '~/hooks/use-drizzle';
+import { useLlamaModelStore } from '~/lib/llama-models';
 import { useModelStore } from '~/lib/whisper-models';
 
 export default function RootRoute() {
   const drizzleDb = useDrizzleDb();
-  const { initializeStore, installedModels } = useModelStore();
+  const { initializeStore: whisperInitializeStore, installedModels: whisperInstalledModels } =
+    useModelStore();
+  const { initializeStore: llamaInitializeStore, installedModels: llamaInstalledModels } =
+    useLlamaModelStore();
   const { theme } = useUnistyles();
 
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -26,7 +30,8 @@ export default function RootRoute() {
 
     (async () => {
       // Initialize model store
-      await initializeStore();
+      await whisperInitializeStore();
+      await llamaInitializeStore();
 
       // Check if app settings exist
       const settings = await drizzleDb.select().from(schema.appSettings);
@@ -52,7 +57,11 @@ export default function RootRoute() {
 
       setLoading(false);
     })();
-  }, [drizzleDb, appSettings, initializeStore]);
+  }, [drizzleDb, appSettings, whisperInitializeStore, llamaInitializeStore]);
+
+  const isModelInstalled = useMemo(() => {
+    return !!whisperInstalledModels.base && !!llamaInstalledModels.base;
+  }, [whisperInstalledModels, llamaInstalledModels]);
 
   // Navigate based on app state
   useEffect(() => {
@@ -68,8 +77,6 @@ export default function RootRoute() {
       }
 
       // Check if base model is actually installed
-      const isModelInstalled = !!installedModels.base;
-
       // If resources aren't downloaded or model isn't installed, go to download page
       if (!preferences.resourcesDownloaded || !isModelInstalled) {
         router.replace('/download-resources');
@@ -85,7 +92,7 @@ export default function RootRoute() {
       // Otherwise, go to home
       router.replace('/home');
     }
-  }, [appSettings, loading, installedModels]);
+  }, [appSettings, loading, isModelInstalled]);
 
   // Don't render the onboarding if we're going to redirect
   if (loading) {
