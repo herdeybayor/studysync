@@ -3,6 +3,7 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useDrizzleStudio } from 'expo-drizzle-studio-plugin';
 import { Stack } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
+import { StatusBar } from 'expo-status-bar';
 import { Suspense } from 'react';
 
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -64,34 +65,12 @@ export default function RootLayout() {
         databaseName={DATABASE_NAME}
         options={{ enableChangeListener: true }}
         useSuspense>
+        <StatusBar style="dark" />
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="setup" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="record"
-            options={{
-              headerShown: false,
-              presentation: 'formSheet',
-              gestureDirection: 'vertical',
-              animation: 'slide_from_bottom',
-              sheetGrabberVisible: true,
-              sheetInitialDetentIndex: 0,
-              sheetAllowedDetents: [0.5, 1],
-              sheetCornerRadius: 24,
-              sheetElevation: 10,
-            }}
-          />
-          <Stack.Screen
-            name="models"
-            options={{
-              presentation: 'modal',
-              gestureDirection: 'vertical',
-              animation: 'slide_from_bottom',
-              sheetGrabberVisible: true,
-              sheetCornerRadius: 24,
-              sheetElevation: 10,
-            }}
-          />
+          <Stack.Screen name="record" options={{ title: 'Record' }} />
+          <Stack.Screen name="models" options={{ title: 'Models' }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       </SQLite.SQLiteProvider>

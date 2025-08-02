@@ -1,14 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  PermissionsAndroid,
-  Platform,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, PermissionsAndroid, Platform, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -288,8 +280,6 @@ export default function RecordScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-
       {/* Header with Models button */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.modelButton} onPress={openModelsScreen}>
