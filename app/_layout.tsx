@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import { useDrizzleStudio } from 'expo-drizzle-studio-plugin';
 import { Stack } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
 import { Suspense } from 'react';
@@ -32,6 +33,8 @@ const LoadingScreen = () => {
 };
 
 export default function RootLayout() {
+  useDrizzleStudio(expoDb);
+
   const { success, error } = useMigrations(db, migrations);
 
   if (error) {
