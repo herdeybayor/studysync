@@ -11,6 +11,7 @@ import { Button } from '~/components/ui/button';
 import { useDrizzleDb } from '~/hooks/use-drizzle';
 import * as schema from '~/db/schema';
 import { useModelStore, WHISPER_MODELS } from '~/lib/whisper-models';
+import { useLlamaModelStore, LLAMA_MODELS } from '~/lib/llama-models';
 
 export default function DownloadResourcesScreen() {
   const { theme } = useUnistyles();
@@ -18,24 +19,42 @@ export default function DownloadResourcesScreen() {
   const { initializeStore, downloadModel, installedModels, downloads, setCurrentModel } =
     useModelStore();
 
-  // We'll use the base model for students - good balance of size and accuracy
-  const MODEL_KEY = 'base';
-  const modelInfo = WHISPER_MODELS[MODEL_KEY];
-  const downloadState = downloads[MODEL_KEY];
-  const isModelInstalled = !!installedModels[MODEL_KEY];
+  const {
+    initializeStore: initializeLlamaStore,
+    downloadModel: downloadLlamaModel,
+    installedModels: llamaInstalledModels,
+    downloads: llamaDownloads,
+    setCurrentModel: setCurrentLlamaModel,
+  } = useLlamaModelStore();
 
-  // Initialize the model store when component mounts
+  // We'll use the base Whisper model for students
+  const WHISPER_MODEL_KEY = 'base';
+  const whisperModelInfo = WHISPER_MODELS[WHISPER_MODEL_KEY];
+  const whisperDownloadState = downloads[WHISPER_MODEL_KEY];
+  const isWhisperInstalled = !!installedModels[WHISPER_MODEL_KEY];
+
+  // We'll use the smaller Qwen model for AI features - faster on mobile
+  const LLAMA_MODEL_KEY = 'qwen2.5-0.5b';
+  const llamaModelInfo = LLAMA_MODELS[LLAMA_MODEL_KEY];
+  const llamaDownloadState = llamaDownloads[LLAMA_MODEL_KEY];
+  const isLlamaInstalled = !!llamaInstalledModels[LLAMA_MODEL_KEY];
+
+  // Both models need to be installed
+  const areAllModelsInstalled = isWhisperInstalled && isLlamaInstalled;
+
+  // Initialize both model stores when component mounts
   useEffect(() => {
     initializeStore();
-  }, [initializeStore]);
+    initializeLlamaStore();
+  }, [initializeStore, initializeLlamaStore]);
 
-  // Check if we should auto-navigate if model is already installed
+  // Check if we should auto-navigate if models are already installed
   useEffect(() => {
-    if (isModelInstalled) {
-      console.log('Model already installed, checking if we should navigate...');
+    if (areAllModelsInstalled) {
+      console.log('All models already installed, checking if we should navigate...');
       markResourcesAsDownloaded();
     }
-  }, [isModelInstalled]);
+  }, [areAllModelsInstalled]);
 
   const markResourcesAsDownloaded = async () => {
     try {
@@ -75,13 +94,17 @@ export default function DownloadResourcesScreen() {
 
   const handleDownload = async () => {
     try {
-      console.log('Starting download of base Whisper model...');
+      console.log('Starting download of AI models...');
 
-      // Download the base model using the model store
-      await downloadModel(MODEL_KEY, true); // true = bypass network check for now
+      // Download both Whisper and Llama models
+      await Promise.all([
+        downloadModel(WHISPER_MODEL_KEY, true),
+        downloadLlamaModel(LLAMA_MODEL_KEY, true),
+      ]);
 
-      // Set this model as the current model
-      setCurrentModel(MODEL_KEY);
+      // Set models as current
+      setCurrentModel(WHISPER_MODEL_KEY);
+      setCurrentLlamaModel(LLAMA_MODEL_KEY);
 
       console.log('Model download completed successfully');
 
@@ -113,8 +136,8 @@ export default function DownloadResourcesScreen() {
     }
   };
 
-  // If model is already installed, show success state
-  if (isModelInstalled) {
+  // If models are already installed, show success state
+  if (areAllModelsInstalled) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
@@ -132,9 +155,10 @@ export default function DownloadResourcesScreen() {
     );
   }
 
-  const isDownloading = downloadState?.isDownloading || false;
-  const downloadProgress = Math.round((downloadState?.progress || 0) * 100);
-  const downloadError = downloadState?.error;
+  const isDownloading =
+    whisperDownloadState?.isDownloading || llamaDownloadState?.isDownloading || false;
+  const downloadProgress = Math.round((whisperDownloadState?.progress || 0) * 100);
+  const downloadError = whisperDownloadState?.error || llamaDownloadState?.error;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -146,7 +170,7 @@ export default function DownloadResourcesScreen() {
           <Text style={styles.title}>Download Additional Resources</Text>
           <Text style={styles.subtitle}>
             StudySync needs to download the speech recognition model to transcribe your lectures.
-            This is a one-time download of about {modelInfo.size}MB.
+            This is a one-time download of about {whisperModelInfo.size}MB.
           </Text>
         </Animated.View>
 

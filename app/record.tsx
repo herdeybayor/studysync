@@ -251,10 +251,16 @@ export default function RecordScreen() {
 
   // Handle save button tap
   const handleSave = () => {
-    // Here you would save the transcription to your database
-    Alert.alert('Save Transcription', 'Transcription saved successfully!', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    if (!transcription.trim()) {
+      Alert.alert('No Content', 'There is no transcription to save.');
+      return;
+    }
+
+    // Navigate to save recording screen with transcript
+    router.navigate({
+      pathname: '/save-recording',
+      params: { transcript: transcription },
+    });
   };
 
   // Timer and waveform animation effect

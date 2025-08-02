@@ -39,6 +39,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "~5.0.10",
     "expo-web-browser": "~14.2.0",
+    "llama.rn": "^0.6.5",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-hook-form": "^7.58.1",
