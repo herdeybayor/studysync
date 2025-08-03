@@ -2,7 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Text, TouchableOpacity, View, ScrollView, Alert, Share, TextInput } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useAudioPlayer } from 'expo-audio';
 
 import { Icons } from '~/components/ui/icons';
 import { SafeAreaView } from '~/components/ui/safe-area-view';
@@ -10,6 +11,7 @@ import { Button } from '~/components/ui/button';
 import { useRecording, useRecordings } from '~/hooks/use-recordings';
 import { useLlamaModel } from '~/lib/llama-models';
 import { useAINaming } from '~/lib/ai-naming';
+import { useWhisperModel } from '~/lib/whisper-models';
 
 export default function RecordingDetailScreen() {
   const { theme } = useUnistyles();
@@ -17,21 +19,46 @@ export default function RecordingDetailScreen() {
   const recordingId = parseInt(params.id);
 
   const { recording, isLoading, refreshRecording } = useRecording(recordingId);
-  const { updateRecording, addSummary, deleteRecording } = useRecordings();
+  const { updateRecording, addSummary, deleteRecording, addTranscript } = useRecordings();
   const { llamaContext } = useLlamaModel();
   const aiNaming = useAINaming(llamaContext);
+  const { whisperContext, isLoading: isWhisperLoading } = useWhisperModel();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [isGeneratingBetterTitle, setIsGeneratingBetterTitle] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
+
+  // Audio player state
+  const audioPlayer = useAudioPlayer(recording?.audioFilePath || '');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState<number | null>(null);
+  const [position] = useState<number>(0);
 
   useEffect(() => {
     if (recording) {
       setEditedTitle(recording.name);
+      if (recording.audioFilePath) {
+        loadAudioFile();
+      }
     }
-  }, [recording]);
+  }, [recording, audioPlayer]);
+
+  const loadAudioFile = async () => {
+    if (!recording?.audioFilePath) return;
+
+    try {
+      // The useAudioPlayer hook handles loading automatically
+      // We can get duration from the player once it's loaded
+      if (audioPlayer) {
+        setDuration(audioPlayer.duration || null);
+      }
+    } catch (error) {
+      console.error('Error loading audio file:', error);
+    }
+  };
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -42,6 +69,47 @@ export default function RecordingDetailScreen() {
       hour: '2-digit',
       minute: '2-digit',
     }).format(new Date(date));
+  };
+
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handlePlayPause = async () => {
+    if (!audioPlayer || !recording?.audioFilePath) return;
+
+    try {
+      if (isPlaying) {
+        audioPlayer.pause();
+        setIsPlaying(false);
+      } else {
+        audioPlayer.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Error playing/pausing audio:', error);
+    }
+  };
+
+  const handleTranscribe = async () => {
+    if (!recording?.audioFilePath || !whisperContext) return;
+
+    setIsTranscribing(true);
+    try {
+      const transcribeJob = whisperContext.transcribe(recording.audioFilePath);
+      const result = await transcribeJob.promise;
+      await addTranscript(recording.id, result.result);
+      refreshRecording();
+      Alert.alert('Success', 'Audio transcribed successfully!');
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      Alert.alert('Error', 'Failed to transcribe audio. Please try again.');
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   const handleSaveTitle = async () => {
@@ -243,8 +311,80 @@ ${summary ? `Summary:\n${summary}\n\n` : ''}${transcript ? `Transcript:\n${trans
                 <Text style={styles.folderText}>{recording.folder.name}</Text>
               </View>
             )}
+            {recording.audioFilePath && (
+              <View style={styles.audioInfo}>
+                <Icons.Feather name="volume-2" size={16} color={theme.colors.limedSpruce} />
+                <Text style={styles.audioInfoText}>
+                  {duration ? formatTime(duration) : 'Loading...'}
+                  {recording.fileSize && ` • ${(recording.fileSize / 1024 / 1024).toFixed(2)} MB`}
+                </Text>
+              </View>
+            )}
           </View>
         </Animated.View>
+
+        {/* Audio Player */}
+        {recording.audioFilePath && (
+          <Animated.View style={styles.section} entering={FadeInUp.duration(600).delay(100)}>
+            <Text style={styles.sectionTitle}>Audio Playback</Text>
+            <View style={styles.audioPlayerContainer}>
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={handlePlayPause}
+                disabled={!audioPlayer}>
+                <Icons.Feather
+                  name={isPlaying ? 'pause' : 'play'}
+                  size={24}
+                  color={audioPlayer ? theme.colors.white : theme.colors.limedSpruce}
+                />
+              </TouchableOpacity>
+
+              <View style={styles.audioProgressContainer}>
+                <View style={styles.audioProgress}>
+                  <View style={[styles.audioProgressBar, { width: '30%' }]} />
+                </View>
+                <View style={styles.audioTimeContainer}>
+                  <Text style={styles.audioTimeText}>{formatTime(position)}</Text>
+                  <Text style={styles.audioTimeText}>
+                    {duration ? formatTime(duration) : '--:--'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Transcription Actions */}
+        {recording.audioFilePath && recording.transcripts.length === 0 && (
+          <Animated.View style={styles.section} entering={FadeInUp.duration(600).delay(200)}>
+            <View style={styles.transcribeSection}>
+              <View style={styles.transcribeInfo}>
+                <Icons.Feather name="file-text" size={20} color={theme.colors.primary} />
+                <View style={styles.transcribeTextContainer}>
+                  <Text style={styles.transcribeTitle}>Generate Transcript</Text>
+                  <Text style={styles.transcribeSubtitle}>
+                    Transcribe this audio to unlock AI features like smart titles and summaries
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.transcribeButton}
+                onPress={handleTranscribe}
+                disabled={isTranscribing || isWhisperLoading || !whisperContext}>
+                <Icons.Feather name="zap" size={16} color={theme.colors.white} />
+                <Text style={styles.transcribeButtonText}>
+                  {isTranscribing
+                    ? 'Transcribing...'
+                    : isWhisperLoading
+                      ? 'Loading Model...'
+                      : !whisperContext
+                        ? 'Model Not Ready'
+                        : 'Transcribe'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
 
         {/* AI Summaries */}
         {recording.summaries.length > 0 && (
@@ -452,6 +592,98 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: 14,
     color: theme.colors.primary,
     fontWeight: '500',
+  },
+  audioInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    marginTop: theme.spacing(1),
+  },
+  audioInfoText: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
+  },
+  audioPlayerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.white,
+    padding: theme.spacing(4),
+    borderRadius: theme.spacing(3),
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    gap: theme.spacing(3),
+  },
+  playButton: {
+    width: theme.spacing(12),
+    height: theme.spacing(12),
+    borderRadius: theme.spacing(6),
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioProgressContainer: {
+    flex: 1,
+  },
+  audioProgress: {
+    height: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2,
+    marginBottom: theme.spacing(2),
+  },
+  audioProgressBar: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+  },
+  audioTimeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  audioTimeText: {
+    fontSize: 12,
+    color: theme.colors.limedSpruce,
+  },
+  transcribeSection: {
+    backgroundColor: theme.colors.white,
+    padding: theme.spacing(4),
+    borderRadius: theme.spacing(3),
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  transcribeInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing(4),
+    gap: theme.spacing(3),
+  },
+  transcribeTextContainer: {
+    flex: 1,
+  },
+  transcribeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.typography,
+    marginBottom: theme.spacing(1),
+  },
+  transcribeSubtitle: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
+    lineHeight: 20,
+  },
+  transcribeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing(3),
+    paddingHorizontal: theme.spacing(4),
+    borderRadius: theme.spacing(3),
+    gap: theme.spacing(2),
+  },
+  transcribeButtonText: {
+    color: theme.colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 20,

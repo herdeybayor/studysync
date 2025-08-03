@@ -1,78 +1,67 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import {
-  Text,
-  TouchableOpacity,
-  View,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  TextInput,
-} from 'react-native';
+import { Text, TouchableOpacity, View, ScrollView, Alert, TextInput } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import * as FileSystem from 'expo-file-system';
 
 import { Icons } from '~/components/ui/icons';
 import { SafeAreaView } from '~/components/ui/safe-area-view';
 import { Button } from '~/components/ui/button';
 import { useFolders, useRecordings } from '~/hooks/use-recordings';
-import { useLlamaModel } from '~/lib/llama-models';
-import { AINameSuggestions, useAINaming } from '~/lib/ai-naming';
 
 export default function SaveRecordingScreen() {
   const { theme } = useUnistyles();
-  const params = useLocalSearchParams<{ transcript?: string }>();
-  const transcript = params.transcript || '';
+  const params = useLocalSearchParams<{
+    audioUri?: string;
+    eventId?: string;
+    eventTitle?: string;
+  }>();
+  const audioUri = params.audioUri || '';
+  const eventId = params.eventId;
+  const eventTitle = params.eventTitle;
 
   const { folders, createFolder } = useFolders();
-  const { createRecording, addTranscript, addSummary } = useRecordings();
-  const { llamaContext, isLoading: isLlamaLoading } = useLlamaModel();
-  const aiNaming = useAINaming(llamaContext);
+  const { createRecording } = useRecordings();
 
   const [recordingTitle, setRecordingTitle] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [aiLoadingText, setAiLoadingText] = useState('');
+  const [audioInfo, setAudioInfo] = useState<{ duration: number; size: number } | null>(null);
 
-  // AI suggestions
-  const [aiSuggestions, setAiSuggestions] = useState<Partial<AINameSuggestions>>({});
-
-  // Generate AI suggestions when component mounts
+  // Get audio file info when component mounts
   useEffect(() => {
-    if (transcript && aiNaming && !isGeneratingAI) {
-      generateAISuggestions();
+    if (audioUri) {
+      getAudioInfo();
+      generateDefaultTitle();
     }
-  }, [transcript, aiNaming]);
+  }, [audioUri, eventTitle]);
 
-  const generateAISuggestions = async () => {
-    if (!aiNaming || !transcript) return;
+  const getAudioInfo = async () => {
+    if (!audioUri) return;
 
-    setIsGeneratingAI(true);
     try {
-      setAiLoadingText('Generating smart titles...');
-      const recordingTitles = await aiNaming.generateRecordingTitles(transcript);
-      setAiSuggestions((prev) => ({ ...prev, recordingTitles }));
-
-      if (recordingTitles.length > 0 && !recordingTitle) {
-        setRecordingTitle(recordingTitles[0]);
+      const info = await FileSystem.getInfoAsync(audioUri);
+      if (info.exists) {
+        setAudioInfo({
+          duration: 0, // Duration would need to be calculated from Audio.Recording
+          size: info.size || 0,
+        });
       }
-
-      setAiLoadingText('Categorizing into folders...');
-      const folderNames = await aiNaming.generateFolderNames([transcript]);
-      setAiSuggestions((prev) => ({ ...prev, folderNames }));
-
-      setAiLoadingText('Creating a summary...');
-      const summary = await aiNaming.generateSummary(transcript);
-      setAiSuggestions((prev) => ({ ...prev, summary }));
     } catch (error) {
-      console.error('Error generating AI suggestions:', error);
-      Alert.alert('AI Error', 'Could not generate all suggestions.');
-    } finally {
-      setIsGeneratingAI(false);
-      setAiLoadingText('');
+      console.error('Error getting audio info:', error);
+    }
+  };
+
+  const generateDefaultTitle = () => {
+    if (eventTitle) {
+      setRecordingTitle(eventTitle);
+    } else {
+      const now = new Date();
+      const defaultTitle = `Recording ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      setRecordingTitle(defaultTitle);
     }
   };
 
@@ -100,20 +89,40 @@ export default function SaveRecordingScreen() {
       return;
     }
 
+    if (!audioUri) {
+      Alert.alert('Error', 'No audio file to save');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // Create the recording
-      const recording = await createRecording(recordingTitle.trim(), selectedFolderId ?? undefined);
-
-      // Add transcript if available
-      if (transcript) {
-        await addTranscript(recording.id, transcript);
+      // Create recordings directory if it doesn't exist
+      const recordingsDir = `${FileSystem.documentDirectory}recordings/`;
+      const dirInfo = await FileSystem.getInfoAsync(recordingsDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(recordingsDir, { intermediates: true });
       }
 
-      // Add AI-generated summary if available
-      if (aiSuggestions.summary) {
-        await addSummary(recording.id, aiSuggestions.summary);
-      }
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `recording_${timestamp}.m4a`;
+      const permanentUri = `${recordingsDir}${filename}`;
+
+      // Move the temporary audio file to permanent location
+      await FileSystem.moveAsync({
+        from: audioUri,
+        to: permanentUri,
+      });
+
+      // Create the recording with audio file path and calendar event ID
+      const recording = await createRecording(
+        recordingTitle.trim(),
+        selectedFolderId ?? undefined,
+        permanentUri,
+        audioInfo?.duration || 0,
+        audioInfo?.size || 0,
+        eventId ? parseInt(eventId) : undefined
+      );
 
       Alert.alert('Recording Saved!', 'Your recording has been saved successfully.', [
         {
@@ -147,17 +156,15 @@ export default function SaveRecordingScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* AI Suggestions Loading */}
-        {isGeneratingAI && (
-          <Animated.View style={styles.aiLoadingContainer} entering={FadeIn.duration(300)}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.aiLoadingText}>{aiLoadingText}</Text>
-          </Animated.View>
-        )}
-
         {/* Recording Title Section */}
         <Animated.View style={styles.section} entering={FadeInUp.duration(600)}>
           <Text style={styles.sectionTitle}>Recording Title</Text>
+          {eventTitle && (
+            <View style={styles.eventContext}>
+              <Icons.Feather name="calendar" size={16} color={theme.colors.primary} />
+              <Text style={styles.eventContextText}>Recording for: {eventTitle}</Text>
+            </View>
+          )}
           <TextInput
             value={recordingTitle}
             onChangeText={setRecordingTitle}
@@ -165,28 +172,12 @@ export default function SaveRecordingScreen() {
             style={styles.textInput}
           />
 
-          {/* AI Title Suggestions */}
-          {aiSuggestions.recordingTitles && aiSuggestions.recordingTitles.length > 0 && (
-            <View style={styles.suggestionsContainer}>
-              <Text style={styles.suggestionsLabel}>AI Suggestions:</Text>
-              {aiSuggestions.recordingTitles.map((title, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.suggestionChip,
-                    recordingTitle === title && styles.selectedSuggestion,
-                  ]}
-                  onPress={() => setRecordingTitle(title)}>
-                  <Icons.Feather name="zap" size={14} color={theme.colors.primary} />
-                  <Text
-                    style={[
-                      styles.suggestionText,
-                      recordingTitle === title && styles.selectedSuggestionText,
-                    ]}>
-                    {title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          {/* Audio File Info */}
+          {audioInfo && (
+            <View style={styles.audioInfoContainer}>
+              <Text style={styles.audioInfoText}>
+                File size: {(audioInfo.size / 1024 / 1024).toFixed(2)} MB
+              </Text>
             </View>
           )}
         </Animated.View>
@@ -234,24 +225,6 @@ export default function SaveRecordingScreen() {
                   style={styles.textInput}
                 />
 
-                {/* AI Folder Suggestions */}
-                {aiSuggestions.folderNames && aiSuggestions.folderNames.length > 0 && (
-                  <View style={styles.folderSuggestionsContainer}>
-                    <Text style={styles.suggestionsLabel}>AI Suggestions:</Text>
-                    <View style={styles.folderSuggestions}>
-                      {aiSuggestions.folderNames.map((name, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.suggestionChip}
-                          onPress={() => setNewFolderName(name)}>
-                          <Icons.Feather name="zap" size={12} color={theme.colors.primary} />
-                          <Text style={styles.suggestionText}>{name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
                 <View style={styles.newFolderActions}>
                   <Button
                     title="Create Folder"
@@ -270,16 +243,6 @@ export default function SaveRecordingScreen() {
             )}
           </View>
         </Animated.View>
-
-        {/* AI Summary Preview */}
-        {aiSuggestions.summary && (
-          <Animated.View style={styles.section} entering={FadeInUp.duration(600).delay(400)}>
-            <Text style={styles.sectionTitle}>AI Summary</Text>
-            <View style={styles.summaryContainer}>
-              <Text style={styles.summaryText}>{aiSuggestions.summary}</Text>
-            </View>
-          </Animated.View>
-        )}
 
         {/* Save Button */}
         <Animated.View style={styles.saveSection} entering={FadeInUp.duration(600).delay(600)}>
@@ -368,6 +331,16 @@ const styles = StyleSheet.create((theme) => ({
     borderWidth: 1,
     borderColor: '#e0e0e0',
     marginBottom: theme.spacing(4),
+  },
+  audioInfoContainer: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    padding: theme.spacing(3),
+    borderRadius: theme.spacing(2),
+    marginBottom: theme.spacing(3),
+  },
+  audioInfoText: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
   },
   suggestionsContainer: {
     marginTop: theme.spacing(2),
@@ -489,5 +462,19 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: 14,
     color: theme.colors.limedSpruce,
     textAlign: 'center',
+  },
+  eventContext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(47, 128, 237, 0.1)',
+    padding: theme.spacing(3),
+    borderRadius: theme.spacing(2),
+    marginBottom: theme.spacing(3),
+    gap: theme.spacing(2),
+  },
+  eventContextText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontWeight: '500',
   },
 }));

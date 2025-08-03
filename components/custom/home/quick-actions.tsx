@@ -21,7 +21,7 @@ export function QuickActions() {
           title: 'Models',
           icon: require('~/assets/images/transcript-button.png'),
           backgroundColor: theme.colors.accent,
-          onPress: () => router.navigate('/models'),
+          onPress: () => router.navigate('/download-resources'),
         },
       ].map((item) => (
         <TouchableOpacity

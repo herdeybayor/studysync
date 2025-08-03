@@ -23,7 +23,6 @@ export default function RecordingsScreen() {
     refreshRecordings,
   } = useRecordings();
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -35,15 +34,10 @@ export default function RecordingsScreen() {
 
   const isLoading = foldersLoading || recordingsLoading;
 
-  // Filter recordings based on selected folder and search query
+  // Filter recordings based on selected folder
   const filteredRecordings = recordings.filter((recording) => {
     const matchesFolder = selectedFolderId === null || recording.folderId === selectedFolderId;
-    const matchesSearch =
-      searchQuery === '' ||
-      recording.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recording.transcripts.some((t) => t.text.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesFolder && matchesSearch;
+    return matchesFolder;
   });
 
   const handleDeleteRecording = (recording: RecordingWithDetails) => {
@@ -110,12 +104,34 @@ export default function RecordingsScreen() {
                   </View>
                 </>
               )}
+              {item.audioFilePath && (
+                <>
+                  <Text style={styles.metaSeparator}>•</Text>
+                  <View style={styles.audioTag}>
+                    <Icons.Feather name="volume-2" size={12} color={theme.colors.limedSpruce} />
+                    <Text style={styles.audioTagText}>
+                      {item.duration
+                        ? `${Math.floor(item.duration / 60)}:${(item.duration % 60).toString().padStart(2, '0')}`
+                        : 'Audio'}
+                      {item.fileSize && ` • ${(item.fileSize / 1024 / 1024).toFixed(1)}MB`}
+                    </Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
           <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteRecording(item)}>
             <Icons.Feather name="trash-2" size={18} color="#EF4444" />
           </TouchableOpacity>
         </View>
+
+        {/* Transcription Status */}
+        {item.audioFilePath && item.transcripts.length === 0 && (
+          <View style={styles.transcriptionNeeded}>
+            <Icons.Feather name="file-text" size={14} color={theme.colors.limedSpruce} />
+            <Text style={styles.transcriptionNeededText}>Tap to transcribe audio</Text>
+          </View>
+        )}
 
         {/* Preview transcript */}
         {item.transcripts.length > 0 && (
@@ -135,10 +151,22 @@ export default function RecordingsScreen() {
         )}
 
         <View style={styles.recordingStats}>
+          {item.audioFilePath && (
+            <View style={styles.stat}>
+              <Icons.Feather name="volume-2" size={14} color={theme.colors.primary} />
+              <Text style={styles.statText}>Audio</Text>
+            </View>
+          )}
           <View style={styles.stat}>
-            <Icons.Feather name="file-text" size={14} color={theme.colors.limedSpruce} />
+            <Icons.Feather
+              name="file-text"
+              size={14}
+              color={item.transcripts.length > 0 ? theme.colors.primary : theme.colors.limedSpruce}
+            />
             <Text style={styles.statText}>
-              {item.transcripts.length} transcript{item.transcripts.length !== 1 ? 's' : ''}
+              {item.transcripts.length > 0
+                ? `${item.transcripts.length} transcript${item.transcripts.length !== 1 ? 's' : ''}`
+                : 'No transcript'}
             </Text>
           </View>
           {item.summaries.length > 0 && (
@@ -384,6 +412,29 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: 12,
     color: theme.colors.primary,
     fontWeight: '500',
+  },
+  audioTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+  },
+  audioTagText: {
+    fontSize: 12,
+    color: theme.colors.limedSpruce,
+  },
+  transcriptionNeeded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(156, 163, 175, 0.1)',
+    padding: theme.spacing(2),
+    borderRadius: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    gap: theme.spacing(2),
+  },
+  transcriptionNeededText: {
+    fontSize: 13,
+    color: theme.colors.limedSpruce,
+    fontStyle: 'italic',
   },
   deleteButton: {
     padding: theme.spacing(2),

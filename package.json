@@ -23,7 +23,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.44.4",
     "expo": "~53.0.20",
-    "expo-audio": "~0.4.8",
+    "expo-audio": "^0.4.8",
     "expo-auth-session": "~6.2.1",
     "expo-blur": "~14.1.5",
     "expo-build-properties": "~0.14.8",

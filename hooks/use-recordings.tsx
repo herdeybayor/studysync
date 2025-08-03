@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { useDrizzleDb } from './use-drizzle';
 import * as schema from '~/db/schema';
 
@@ -133,13 +133,24 @@ export const useRecordings = (folderId?: number) => {
     loadRecordings();
   }, [folderId]);
 
-  const createRecording = async (name: string, folderId?: number) => {
+  const createRecording = async (
+    name: string,
+    folderId?: number,
+    audioFilePath?: string,
+    duration?: number,
+    fileSize?: number,
+    calendarEventId?: number
+  ) => {
     try {
       const newRecording = await drizzleDb
         .insert(schema.recordings)
         .values({
           name,
           folderId: folderId || null,
+          audioFilePath: audioFilePath || null,
+          duration: duration || null,
+          fileSize: fileSize || null,
+          calendarEventId: calendarEventId || null,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
