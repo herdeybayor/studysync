@@ -124,26 +124,6 @@ Summary:`;
   }
 
   /**
-   * Generate all AI suggestions at once for efficiency
-   */
-  async generateAllSuggestions(
-    transcript: string,
-    existingTranscripts: string[] = []
-  ): Promise<AINameSuggestions> {
-    const [recordingTitles, folderNames, summary] = await Promise.all([
-      this.generateRecordingTitles(transcript),
-      this.generateFolderNames([transcript, ...existingTranscripts]),
-      this.generateSummary(transcript),
-    ]);
-
-    return {
-      recordingTitles,
-      folderNames,
-      summary,
-    };
-  }
-
-  /**
    * Generate smart title suggestions for existing recordings based on transcript analysis
    */
   async suggestBetterTitle(currentTitle: string, transcript: string): Promise<string[]> {

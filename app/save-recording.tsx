@@ -17,7 +17,7 @@ import { SafeAreaView } from '~/components/ui/safe-area-view';
 import { Button } from '~/components/ui/button';
 import { useFolders, useRecordings } from '~/hooks/use-recordings';
 import { useLlamaModel } from '~/lib/llama-models';
-import { useAINaming } from '~/lib/ai-naming';
+import { AINameSuggestions, useAINaming } from '~/lib/ai-naming';
 
 export default function SaveRecordingScreen() {
   const { theme } = useUnistyles();
@@ -35,13 +35,10 @@ export default function SaveRecordingScreen() {
   const [isCreatingNewFolder, setIsCreatingNewFolder] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiLoadingText, setAiLoadingText] = useState('');
 
   // AI suggestions
-  const [aiSuggestions, setAiSuggestions] = useState<{
-    recordingTitles: string[];
-    folderNames: string[];
-    summary: string;
-  } | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<Partial<AINameSuggestions>>({});
 
   // Generate AI suggestions when component mounts
   useEffect(() => {
@@ -55,17 +52,27 @@ export default function SaveRecordingScreen() {
 
     setIsGeneratingAI(true);
     try {
-      const suggestions = await aiNaming.generateAllSuggestions(transcript);
-      setAiSuggestions(suggestions);
+      setAiLoadingText('Generating smart titles...');
+      const recordingTitles = await aiNaming.generateRecordingTitles(transcript);
+      setAiSuggestions((prev) => ({ ...prev, recordingTitles }));
 
-      // Auto-fill the first suggested title
-      if (suggestions.recordingTitles.length > 0 && !recordingTitle) {
-        setRecordingTitle(suggestions.recordingTitles[0]);
+      if (recordingTitles.length > 0 && !recordingTitle) {
+        setRecordingTitle(recordingTitles[0]);
       }
+
+      setAiLoadingText('Categorizing into folders...');
+      const folderNames = await aiNaming.generateFolderNames([transcript]);
+      setAiSuggestions((prev) => ({ ...prev, folderNames }));
+
+      setAiLoadingText('Creating a summary...');
+      const summary = await aiNaming.generateSummary(transcript);
+      setAiSuggestions((prev) => ({ ...prev, summary }));
     } catch (error) {
       console.error('Error generating AI suggestions:', error);
+      Alert.alert('AI Error', 'Could not generate all suggestions.');
     } finally {
       setIsGeneratingAI(false);
+      setAiLoadingText('');
     }
   };
 
@@ -104,7 +111,7 @@ export default function SaveRecordingScreen() {
       }
 
       // Add AI-generated summary if available
-      if (aiSuggestions?.summary) {
+      if (aiSuggestions.summary) {
         await addSummary(recording.id, aiSuggestions.summary);
       }
 
@@ -144,7 +151,7 @@ export default function SaveRecordingScreen() {
         {isGeneratingAI && (
           <Animated.View style={styles.aiLoadingContainer} entering={FadeIn.duration(300)}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.aiLoadingText}>Generating smart suggestions...</Text>
+            <Text style={styles.aiLoadingText}>{aiLoadingText}</Text>
           </Animated.View>
         )}
 
@@ -159,7 +166,7 @@ export default function SaveRecordingScreen() {
           />
 
           {/* AI Title Suggestions */}
-          {aiSuggestions?.recordingTitles && aiSuggestions.recordingTitles.length > 0 && (
+          {aiSuggestions.recordingTitles && aiSuggestions.recordingTitles.length > 0 && (
             <View style={styles.suggestionsContainer}>
               <Text style={styles.suggestionsLabel}>AI Suggestions:</Text>
               {aiSuggestions.recordingTitles.map((title, index) => (
@@ -228,7 +235,7 @@ export default function SaveRecordingScreen() {
                 />
 
                 {/* AI Folder Suggestions */}
-                {aiSuggestions?.folderNames && aiSuggestions.folderNames.length > 0 && (
+                {aiSuggestions.folderNames && aiSuggestions.folderNames.length > 0 && (
                   <View style={styles.folderSuggestionsContainer}>
                     <Text style={styles.suggestionsLabel}>AI Suggestions:</Text>
                     <View style={styles.folderSuggestions}>
@@ -265,7 +272,7 @@ export default function SaveRecordingScreen() {
         </Animated.View>
 
         {/* AI Summary Preview */}
-        {aiSuggestions?.summary && (
+        {aiSuggestions.summary && (
           <Animated.View style={styles.section} entering={FadeInUp.duration(600).delay(400)}>
             <Text style={styles.sectionTitle}>AI Summary</Text>
             <View style={styles.summaryContainer}>

@@ -153,32 +153,29 @@ export default function RecordScreen() {
 
       try {
         // Pre-configured optimal settings for students
-        // const options: TranscribeRealtimeOptions = {
-        //   // Auto-detect language for multi-language support
-        //   language: undefined,
-        //   // 5 minutes max recording time - good for lecture segments
-        //   realtimeAudioSec: 300,
-        //   // 8-second chunks for good balance of speed and accuracy
-        //   realtimeAudioSliceSec: 8,
-        //   // 4 threads for good performance on most devices
-        //   maxThreads: 4,
-        //   // Voice Activity Detection to improve performance and reduce false positives
-        //   useVad: true,
-        //   // Moderate VAD threshold - not too sensitive
-        //   vadThold: 0.6,
-        //   // Low temperature for more consistent transcription
-        //   temperature: 0.1,
-        //   // Beam size 5 for good accuracy without being too slow
-        //   beamSize: 5,
-        //   // No translation by default - students usually record in their native language
-        //   translate: false,
-        //   // Enable timestamps for better note-taking
-        //   tokenTimestamps: true,
-        // };
-        const { stop, subscribe } = await whisperContext.transcribeRealtime({
+        const options: TranscribeRealtimeOptions = {
+          // Auto-detect language for multi-language support
+          language: undefined,
+          // 5 minutes max recording time - good for lecture segments
           realtimeAudioSec: 300,
-          // tokenTimestamps: true,
-        });
+          // 8-second chunks for good balance of speed and accuracy
+          realtimeAudioSliceSec: 8,
+          // 4 threads for good performance on most devices
+          maxThreads: 4,
+          // Voice Activity Detection to improve performance and reduce false positives
+          useVad: true,
+          // Moderate VAD threshold - not too sensitive
+          vadThold: 0.6,
+          // Low temperature for more consistent transcription
+          temperature: 0.1,
+          // Beam size 5 for good accuracy without being too slow
+          beamSize: 5,
+          // No translation by default - students usually record in their native language
+          translate: false,
+          // Enable timestamps for better note-taking
+          tokenTimestamps: true,
+        };
+        const { stop, subscribe } = await whisperContext.transcribeRealtime(options);
 
         // Subscribe to transcription events
         const unsubscribeCallback = subscribe((event: TranscribeRealtimeEvent) => {
