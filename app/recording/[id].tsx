@@ -263,7 +263,7 @@ ${summary ? `Summary:\n${summary}\n\n` : ''}${transcript ? `Transcript:\n${trans
         )}
 
         {/* Generate Summary Button */}
-        {recording.transcripts.length > 0 && llamaContext && (
+        {recording.transcripts.length > 0 && recording.summaries.length === 0 && llamaContext && (
           <Animated.View style={styles.section} entering={FadeInUp.duration(600).delay(300)}>
             <TouchableOpacity
               style={styles.generateSummaryButton}
