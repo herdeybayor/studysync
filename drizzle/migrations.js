@@ -4,13 +4,14 @@ import journal from './meta/_journal.json';
 import m0000 from './0000_cold_pet_avengers.sql';
 import m0001 from './0001_glossy_zarda.sql';
 import m0002 from './0002_sleepy_blazing_skull.sql';
+import m0003 from './0003_funny_dorian_gray.sql';
 
-  export default {
-    journal,
-    migrations: {
-      m0000,
-m0001,
-m0002
-    }
-  }
-  
+export default {
+  journal,
+  migrations: {
+    m0000,
+    m0001,
+    m0002,
+    m0003,
+  },
+};

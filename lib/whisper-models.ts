@@ -506,37 +506,47 @@ export function useWhisperModel() {
 
   useEffect(() => {
     let isMounted = true;
+    console.log('[WhisperModel] useEffect triggered. Current model:', currentModel);
 
     async function loadModel() {
-      if (!currentModel) return;
+      if (!currentModel) {
+        console.log('[WhisperModel] No current model selected. Aborting load.');
+        return;
+      }
 
       const modelData = installedModels[currentModel];
-      if (!modelData) return;
+      if (!modelData) {
+        console.log('[WhisperModel] Model data not found for', currentModel, '. Aborting load.');
+        return;
+      }
 
+      console.log(`[WhisperModel] Preparing to load model: ${currentModel}`);
       setIsLoading(true);
       setError(null);
-      console.log(`[WhisperModel] Loading model ${currentModel}`);
 
       try {
-        // Release previous context if any
-        if (whisperContext) {
-          await whisperContext.release();
-          console.log(`[WhisperModel] Released previous whisper context`);
-        }
-
-        // Initialize with the selected model
         const filePath =
           Platform.OS === 'ios' ? modelData.path.replace('file://', '') : modelData.path;
 
-        console.log(`[WhisperModel] Initializing whisper with model path: ${filePath}`);
-        const context = await initWhisper({
-          filePath,
-        });
+        console.log(`[WhisperModel] Initializing Whisper with model path: ${filePath}`);
+        console.time(`[WhisperModel] ${currentModel} initialization`);
+
+        const context = await initWhisper({ filePath });
+
+        console.timeEnd(`[WhisperModel] ${currentModel} initialization`);
 
         if (isMounted) {
+          console.log(
+            `[WhisperModel] Successfully loaded model ${currentModel}. Context ID:`,
+            context.id
+          );
           setWhisperContext(context);
           setIsLoading(false);
-          console.log(`[WhisperModel] Successfully loaded model ${currentModel}`);
+        } else {
+          console.log(
+            '[WhisperModel] Component unmounted after model load, releasing new context.'
+          );
+          context.release();
         }
       } catch (err: any) {
         console.error('[WhisperModel] Failed to initialize Whisper model:', err);
@@ -551,12 +561,14 @@ export function useWhisperModel() {
 
     return () => {
       isMounted = false;
+      console.log('[WhisperModel] useEffect cleanup. Releasing context if it exists.');
       if (whisperContext) {
+        console.log(`[WhisperModel] Releasing context ID: ${whisperContext.id}`);
         whisperContext.release().catch(console.error);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentModel, installedModels]);
+  }, [currentModel, JSON.stringify(installedModels)]);
 
   return {
     whisperContext,

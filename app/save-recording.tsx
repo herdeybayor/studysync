@@ -105,7 +105,7 @@ export default function SaveRecordingScreen() {
 
       // Generate unique filename
       const timestamp = Date.now();
-      const filename = `recording_${timestamp}.m4a`;
+      const filename = `recording_${timestamp}.wav`;
       const permanentUri = `${recordingsDir}${filename}`;
 
       // Move the temporary audio file to permanent location

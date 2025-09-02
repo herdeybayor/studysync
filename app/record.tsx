@@ -15,8 +15,10 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
   AudioModule,
-  RecordingPresets,
   setAudioModeAsync,
+  type RecordingOptions,
+  IOSOutputFormat,
+  AudioQuality,
 } from 'expo-audio';
 
 import { Icons } from '~/components/ui/icons';
@@ -24,13 +26,36 @@ import { useCalendarEvent } from '~/hooks/use-calendar-events';
 
 const WAVEFORM_COUNT = 30;
 
+// Whisper-optimized recording configuration
+const WHISPER_RECORDING_OPTIONS: RecordingOptions = {
+  extension: '.wav',
+  sampleRate: 44100, // Use standard rate for better compatibility
+  numberOfChannels: 1, // Mono for speech
+  bitRate: 128000,
+  ios: {
+    outputFormat: IOSOutputFormat.LINEARPCM,
+    audioQuality: AudioQuality.HIGH,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  android: {
+    outputFormat: 'default',
+    audioEncoder: 'default',
+  },
+  web: {
+    mimeType: 'audio/wav',
+    bitsPerSecond: 128000,
+  },
+};
+
 export default function RecordScreen() {
   const { theme } = useUnistyles();
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
   const { event } = useCalendarEvent(eventId ? parseInt(eventId) : 0);
 
-  // Audio recording setup
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // Audio recording setup - use WAV format for better Whisper compatibility
+  const audioRecorder = useAudioRecorder(WHISPER_RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(audioRecorder);
 
   const [recordingTime, setRecordingTime] = useState(0);
