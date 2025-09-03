@@ -23,6 +23,7 @@ import {
 
 import { Icons } from '~/components/ui/icons';
 import { useCalendarEvent } from '~/hooks/use-calendar-events';
+import { useSpeechRecognition } from '~/hooks/use-speech-recognition';
 
 const WAVEFORM_COUNT = 30;
 
@@ -62,6 +63,25 @@ export default function RecordScreen() {
   const [recordingStatus, setRecordingStatus] = useState<string>('Ready to record');
   const [hasPermissions, setHasPermissions] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [showTranscription, setShowTranscription] = useState(true);
+
+  // Real-time speech recognition
+  const {
+    isListening,
+    transcript,
+    finalTranscript,
+    fullTranscript,
+    error: speechError,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition({
+    enabled: recorderState.isRecording && !isPaused,
+    language: 'en-US',
+    continuous: true,
+    interimResults: true,
+    requiresOnDeviceRecognition: true,
+  });
 
   // Animated values
   const buttonScale = useSharedValue(1);
@@ -98,13 +118,13 @@ export default function RecordScreen() {
   // Update recording status based on recorder state
   useEffect(() => {
     if (recorderState.isRecording && !isPaused) {
-      setRecordingStatus('Recording...');
+      setRecordingStatus(isListening ? 'Recording & transcribing...' : 'Recording...');
     } else if (isPaused) {
       setRecordingStatus('Recording paused');
     } else {
       setRecordingStatus('Ready to record');
     }
-  }, [recorderState.isRecording, isPaused]);
+  }, [recorderState.isRecording, isPaused, isListening]);
 
   // Format time display (mm:ss)
   const formatTime = (seconds: number) => {
@@ -227,6 +247,9 @@ export default function RecordScreen() {
 
     // Reset waveform to minimal height
     waveformValues.value = Array(WAVEFORM_COUNT).fill(4);
+
+    // Reset transcription
+    resetTranscript();
   };
 
   // Handle save button tap
@@ -249,11 +272,12 @@ export default function RecordScreen() {
         return;
       }
 
-      // Navigate to save recording screen with audio file URI and optional event info
+      // Navigate to save recording screen with audio file URI, transcript, and optional event info
       router.navigate({
         pathname: '/save-recording',
         params: {
           audioUri: uri,
+          transcript: fullTranscript || undefined,
           eventId: eventId || undefined,
           eventTitle: event?.title || undefined,
         },
@@ -315,6 +339,51 @@ export default function RecordScreen() {
         </Animated.View>
 
         <View style={styles.waveformContainer}>{waveformBars}</View>
+
+        {/* Real-time Transcription */}
+        <View style={styles.transcriptionContainer}>
+          <TouchableOpacity 
+            style={styles.transcriptionHeader}
+            onPress={() => setShowTranscription(!showTranscription)}
+          >
+            <Text style={styles.transcriptionTitle}>Live Transcription</Text>
+            <View style={styles.transcriptionHeaderRight}>
+              {speechError && (
+                <Icons.Feather name="alert-circle" size={14} color={theme.colors.accent} />
+              )}
+              <Icons.Feather 
+                name="chevron-down" 
+                size={16} 
+                color={theme.colors.limedSpruce}
+                style={[styles.transcriptionChevron, showTranscription && { transform: [{ rotate: '180deg' }] }]}
+              />
+            </View>
+          </TouchableOpacity>
+          
+          {showTranscription && (
+            <View style={styles.transcriptionContent}>
+              {speechError ? (
+                <View style={styles.transcriptionError}>
+                  <Text style={styles.transcriptionErrorText}>{speechError}</Text>
+                  <Text style={styles.transcriptionErrorSubtext}>
+                    Transcription may not be available offline. Audio will still be recorded.
+                  </Text>
+                </View>
+              ) : fullTranscript ? (
+                <Text style={styles.transcriptionText}>
+                  {finalTranscript}
+                  {transcript && (
+                    <Text style={styles.transcriptionInterim}> {transcript}</Text>
+                  )}
+                </Text>
+              ) : recorderState.isRecording ? (
+                <Text style={styles.transcriptionPlaceholder}>Start speaking to see live transcription...</Text>
+              ) : (
+                <Text style={styles.transcriptionPlaceholder}>Transcription will appear here when recording starts</Text>
+              )}
+            </View>
+          )}
+        </View>
 
         <View style={styles.controlsContainer}>
           <TouchableOpacity
@@ -455,35 +524,68 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: 2,
   },
   transcriptionContainer: {
-    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.03)',
     borderRadius: theme.spacing(3),
     padding: theme.spacing(3),
     marginVertical: theme.spacing(4),
+    minHeight: 120,
+    maxHeight: 200,
   },
   transcriptionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: theme.spacing(2),
+  },
+  transcriptionHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(1),
   },
   transcriptionChevron: {
-    transform: [{ rotate: '180deg' }],
+    // Base rotation handled inline
   },
   transcriptionContent: {
-    // flex: 1,
-    paddingBottom: theme.spacing(10),
     paddingTop: theme.spacing(2),
   },
   transcriptionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.limedSpruce,
-    marginBottom: theme.spacing(2),
   },
   transcriptionText: {
     fontSize: 14,
     color: theme.colors.typography,
     lineHeight: 20,
+  },
+  transcriptionInterim: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  transcriptionPlaceholder: {
+    fontSize: 14,
+    color: theme.colors.limedSpruce,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  transcriptionError: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing(2),
+  },
+  transcriptionErrorText: {
+    fontSize: 14,
+    color: theme.colors.accent,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: theme.spacing(1),
+  },
+  transcriptionErrorSubtext: {
+    fontSize: 12,
+    color: theme.colors.limedSpruce,
+    textAlign: 'center',
+    lineHeight: 16,
   },
   controlsContainer: {
     flexDirection: 'row',

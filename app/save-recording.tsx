@@ -14,15 +14,17 @@ export default function SaveRecordingScreen() {
   const { theme } = useUnistyles();
   const params = useLocalSearchParams<{
     audioUri?: string;
+    transcript?: string;
     eventId?: string;
     eventTitle?: string;
   }>();
   const audioUri = params.audioUri || '';
+  const transcript = params.transcript;
   const eventId = params.eventId;
   const eventTitle = params.eventTitle;
 
   const { folders, createFolder } = useFolders();
-  const { createRecording } = useRecordings();
+  const { createRecording, addTranscript } = useRecordings();
 
   const [recordingTitle, setRecordingTitle] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
@@ -124,6 +126,11 @@ export default function SaveRecordingScreen() {
         eventId ? parseInt(eventId) : undefined
       );
 
+      // Add transcript if available from real-time transcription
+      if (transcript && transcript.trim()) {
+        await addTranscript(recording.id, transcript.trim());
+      }
+
       Alert.alert('Recording Saved!', 'Your recording has been saved successfully.', [
         {
           text: 'View Recording',
@@ -177,6 +184,22 @@ export default function SaveRecordingScreen() {
             <View style={styles.audioInfoContainer}>
               <Text style={styles.audioInfoText}>
                 File size: {(audioInfo.size / 1024 / 1024).toFixed(2)} MB
+              </Text>
+            </View>
+          )}
+
+          {/* Transcript Info */}
+          {transcript && (
+            <View style={styles.transcriptInfoContainer}>
+              <View style={styles.transcriptHeader}>
+                <Icons.Feather name="file-text" size={16} color={theme.colors.primary} />
+                <Text style={styles.transcriptHeaderText}>Live Transcript Available</Text>
+              </View>
+              <Text style={styles.transcriptPreview}>
+                {transcript.length > 100 ? transcript.substring(0, 100) + '...' : transcript}
+              </Text>
+              <Text style={styles.transcriptInfo}>
+                This transcript will be automatically saved with your recording.
               </Text>
             </View>
           )}
@@ -341,6 +364,37 @@ const styles = StyleSheet.create((theme) => ({
   audioInfoText: {
     fontSize: 14,
     color: theme.colors.limedSpruce,
+  },
+  transcriptInfoContainer: {
+    backgroundColor: 'rgba(47, 128, 237, 0.05)',
+    padding: theme.spacing(3),
+    borderRadius: theme.spacing(2),
+    marginBottom: theme.spacing(3),
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+  },
+  transcriptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+  },
+  transcriptHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  transcriptPreview: {
+    fontSize: 14,
+    color: theme.colors.typography,
+    lineHeight: 20,
+    marginBottom: theme.spacing(2),
+    fontStyle: 'italic',
+  },
+  transcriptInfo: {
+    fontSize: 12,
+    color: theme.colors.limedSpruce,
+    lineHeight: 16,
   },
   suggestionsContainer: {
     marginTop: theme.spacing(2),
