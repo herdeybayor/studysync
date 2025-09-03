@@ -28,7 +28,7 @@ export default function DownloadResourcesScreen() {
   } = useLlamaModelStore();
 
   // We'll use the base Whisper model for students
-  const WHISPER_MODEL_KEY = 'base';
+  const WHISPER_MODEL_KEY = 'tiny';
   const whisperModelInfo = WHISPER_MODELS[WHISPER_MODEL_KEY];
   const whisperDownloadState = downloads[WHISPER_MODEL_KEY];
   const isWhisperInstalled = !!installedModels[WHISPER_MODEL_KEY];
