@@ -51,9 +51,14 @@ export function useSpeechRecognition({
           if (Platform.OS === 'android' && requiresOnDeviceRecognition) {
             try {
               console.log('[SpeechRecognition] Triggering offline model download for:', language);
-              await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({ locale: language });
+              await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
+                locale: language,
+              });
             } catch (downloadError) {
-              console.warn('[SpeechRecognition] Failed to trigger offline model download:', downloadError);
+              console.warn(
+                '[SpeechRecognition] Failed to trigger offline model download:',
+                downloadError
+              );
               // Don't set this as an error since it might still work online
             }
           }
@@ -85,11 +90,11 @@ export function useSpeechRecognition({
       isFinal: event.isFinal,
       transcript: event.results[0]?.transcript,
     });
-    
+
     const result = event.results[0];
     if (result) {
       if (event.isFinal) {
-        setFinalTranscript(prev => prev + ' ' + result.transcript);
+        setFinalTranscript((prev) => prev + ' ' + result.transcript);
         setTranscript(''); // Clear interim results
       } else if (interimResults) {
         setTranscript(result.transcript);
@@ -135,7 +140,15 @@ export function useSpeechRecognition({
       console.error('[SpeechRecognition] Failed to start:', err);
       setError(err instanceof Error ? err.message : 'Failed to start speech recognition');
     }
-  }, [isSupported, hasPermission, language, interimResults, maxAlternatives, continuous, requiresOnDeviceRecognition]);
+  }, [
+    isSupported,
+    hasPermission,
+    language,
+    interimResults,
+    maxAlternatives,
+    continuous,
+    requiresOnDeviceRecognition,
+  ]);
 
   // Stop listening
   const stopListening = useCallback(async () => {

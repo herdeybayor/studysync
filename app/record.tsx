@@ -342,24 +342,26 @@ export default function RecordScreen() {
 
         {/* Real-time Transcription */}
         <View style={styles.transcriptionContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.transcriptionHeader}
-            onPress={() => setShowTranscription(!showTranscription)}
-          >
+            onPress={() => setShowTranscription(!showTranscription)}>
             <Text style={styles.transcriptionTitle}>Live Transcription</Text>
             <View style={styles.transcriptionHeaderRight}>
               {speechError && (
                 <Icons.Feather name="alert-circle" size={14} color={theme.colors.accent} />
               )}
-              <Icons.Feather 
-                name="chevron-down" 
-                size={16} 
+              <Icons.Feather
+                name="chevron-down"
+                size={16}
                 color={theme.colors.limedSpruce}
-                style={[styles.transcriptionChevron, showTranscription && { transform: [{ rotate: '180deg' }] }]}
+                style={[
+                  styles.transcriptionChevron,
+                  showTranscription && { transform: [{ rotate: '180deg' }] },
+                ]}
               />
             </View>
           </TouchableOpacity>
-          
+
           {showTranscription && (
             <View style={styles.transcriptionContent}>
               {speechError ? (
@@ -372,14 +374,16 @@ export default function RecordScreen() {
               ) : fullTranscript ? (
                 <Text style={styles.transcriptionText}>
                   {finalTranscript}
-                  {transcript && (
-                    <Text style={styles.transcriptionInterim}> {transcript}</Text>
-                  )}
+                  {transcript && <Text style={styles.transcriptionInterim}> {transcript}</Text>}
                 </Text>
               ) : recorderState.isRecording ? (
-                <Text style={styles.transcriptionPlaceholder}>Start speaking to see live transcription...</Text>
+                <Text style={styles.transcriptionPlaceholder}>
+                  Start speaking to see live transcription...
+                </Text>
               ) : (
-                <Text style={styles.transcriptionPlaceholder}>Transcription will appear here when recording starts</Text>
+                <Text style={styles.transcriptionPlaceholder}>
+                  Transcription will appear here when recording starts
+                </Text>
               )}
             </View>
           )}
