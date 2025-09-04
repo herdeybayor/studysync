@@ -34,7 +34,7 @@ export function useSpeechRecognition({
   useEffect(() => {
     const checkSupportAndPermissions = async () => {
       try {
-        const supported = await ExpoSpeechRecognitionModule.getSpeechRecognitionAvailableAsync();
+        const supported = ExpoSpeechRecognitionModule.isRecognitionAvailable();
         console.log('[SpeechRecognition] Supported:', supported);
         setIsSupported(supported);
 
