@@ -3,13 +3,28 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { router } from 'expo-router';
 
 import { Icons } from '~/components/ui/icons';
 import { AppSettings } from '~/db/schema';
 import { Image } from '~/components/ui/image';
+import { useCalendarEvents } from '~/hooks/use-calendar-events';
 
 export function Header({ appSettings }: { appSettings: AppSettings }) {
   const { theme } = useUnistyles();
+  const { events, isLoading: isLoadingEvents } = useCalendarEvents();
+
+  const upcomingEvents = events
+    .filter((event) => new Date(event.startTime) > new Date())
+    .slice(0, 2);
+
+  const handleSearch = () => {
+    router.push('/recordings?search=true');
+  };
+
+  const handleCalendarNavigation = () => {
+    router.push('/(tabs)/calendar');
+  };
 
   return (
     <LinearGradient
@@ -44,7 +59,10 @@ export function Header({ appSettings }: { appSettings: AppSettings }) {
         </View>
       </View>
 
-      <TouchableOpacity>
+      <TouchableOpacity
+        onPress={handleSearch}
+        accessibilityRole="button"
+        accessibilityLabel="Search recordings">
         <View style={styles.headerSearch}>
           <Icons name="search-outline" size={20} color="#667185" />
           <Text style={styles.headerSearchText}>Search for recording</Text>
@@ -54,46 +72,64 @@ export function Header({ appSettings }: { appSettings: AppSettings }) {
       <BlurView intensity={10} tint="dark" style={styles.calendarContainer}>
         <View style={styles.calendarHeader}>
           <Text style={styles.calendarHeaderText}>Calendar</Text>
-          <TouchableOpacity style={styles.calendarArrow}>
+          <TouchableOpacity
+            style={styles.calendarArrow}
+            onPress={handleCalendarNavigation}
+            accessibilityRole="button"
+            accessibilityLabel="View full calendar">
             <Icons.Feather name="arrow-up-right" size={16} color={theme.colors.white} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.calendarItems}>
-          {[
-            {
-              id: 1,
-              title: 'Attend PSY 101 Class',
-              timestamp: 1718851200,
-              from: '10:00 AM',
-              to: '11:00 AM',
-              onPress: () => {},
-            },
-            {
-              id: 2,
-              title: 'Attend PSY 101 Class',
-              timestamp: 1718851200,
-              from: '10:00 AM',
-              to: '11:00 AM',
-              onPress: () => {},
-            },
-          ].map((item) => (
-            <TouchableOpacity key={item.id} onPress={item.onPress}>
-              <View style={styles.calendarItem}>
+          {isLoadingEvents ? (
+            // Loading state
+            <View style={styles.calendarItem}>
+              <View style={styles.calendarItemContent}>
+                <Text style={[styles.calendarItemDate, { opacity: 0.5 }]}>Loading...</Text>
+                <Text style={[styles.calendarItemTitle, { opacity: 0.5 }]}>Loading events</Text>
+              </View>
+            </View>
+          ) : upcomingEvents.length > 0 ? (
+            upcomingEvents.map((event) => (
+              <TouchableOpacity
+                key={event.id}
+                onPress={() => router.push(`/(tabs)/calendar?eventId=${event.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`View event: ${event.title}`}>
+                <View style={styles.calendarItem}>
+                  <View style={styles.calendarItemContent}>
+                    <Text style={styles.calendarItemDate}>
+                      {format(new Date(event.startTime), 'MMM d, yyyy')}
+                    </Text>
+                    <Text style={styles.calendarItemTitle}>{event.title}</Text>
+                  </View>
+                  <View style={styles.calendarItemTime}>
+                    <Text style={styles.calendarItemTimeText}>
+                      {format(new Date(event.startTime), 'h:mm a')} -{' '}
+                      {format(new Date(event.endTime), 'h:mm a')}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            // Empty state
+            <TouchableOpacity
+              onPress={handleCalendarNavigation}
+              accessibilityRole="button"
+              accessibilityLabel="Add first calendar event">
+              <View style={[styles.calendarItem, { opacity: 0.7 }]}>
                 <View style={styles.calendarItemContent}>
-                  <Text style={styles.calendarItemDate}>
-                    {format(item.timestamp, 'MMM d, yyyy')}
-                  </Text>
-                  <Text style={styles.calendarItemTitle}>{item.title}</Text>
+                  <Text style={styles.calendarItemDate}>No upcoming events</Text>
+                  <Text style={styles.calendarItemTitle}>Tap to add events</Text>
                 </View>
                 <View style={styles.calendarItemTime}>
-                  <Text style={styles.calendarItemTimeText}>
-                    {item.from} - {item.to}
-                  </Text>
+                  <Icons.Feather name="plus" size={14} color={theme.colors.primary} />
                 </View>
               </View>
             </TouchableOpacity>
-          ))}
+          )}
         </View>
       </BlurView>
     </LinearGradient>
