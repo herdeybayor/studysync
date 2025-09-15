@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
@@ -11,10 +11,15 @@ import * as schema from '~/db/schema';
 
 import type { AppSettings } from '~/db/schema';
 import { useDrizzleDb } from '~/hooks/use-drizzle';
+import { useLlamaModelStore } from '~/lib/llama-models';
+import { useModelStore } from '~/lib/whisper-models';
 
 export default function RootRoute() {
   const drizzleDb = useDrizzleDb();
-
+  const { initializeStore: whisperInitializeStore, installedModels: whisperInstalledModels } =
+    useModelStore();
+  const { initializeStore: llamaInitializeStore, installedModels: llamaInstalledModels } =
+    useLlamaModelStore();
   const { theme } = useUnistyles();
 
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -24,6 +29,10 @@ export default function RootRoute() {
     if (appSettings) return;
 
     (async () => {
+      // Initialize model store
+      await whisperInitializeStore();
+      await llamaInitializeStore();
+
       // Check if app settings exist
       const settings = await drizzleDb.select().from(schema.appSettings);
 
@@ -48,16 +57,42 @@ export default function RootRoute() {
 
       setLoading(false);
     })();
-  }, [drizzleDb, appSettings]);
+  }, [drizzleDb, appSettings, whisperInitializeStore, llamaInitializeStore]);
 
-  // Navigate based on whether user has completed setup
+  const isModelInstalled = useMemo(() => {
+    return !!whisperInstalledModels.base && !!llamaInstalledModels.base;
+  }, [whisperInstalledModels, llamaInstalledModels]);
+
+  // Navigate based on app state
   useEffect(() => {
     if (!loading && appSettings) {
-      if (appSettings.firstName && appSettings.lastName) {
-        router.replace('/home');
+      // Check if resources are downloaded (stored in preferences)
+      let preferences: any = {};
+      if (appSettings.preferences && typeof appSettings.preferences === 'string') {
+        try {
+          preferences = JSON.parse(appSettings.preferences);
+        } catch (e) {
+          console.error('Error parsing preferences:', e);
+        }
       }
+
+      // Check if base model is actually installed
+      // If resources aren't downloaded or model isn't installed, go to download page
+      if (!preferences.resourcesDownloaded || !isModelInstalled) {
+        router.replace('/download-resources');
+        return;
+      }
+
+      // If user hasn't completed setup, go to setup
+      if (!appSettings.firstName || !appSettings.lastName) {
+        router.replace('/setup');
+        return;
+      }
+
+      // Otherwise, go to home
+      router.replace('/home');
     }
-  }, [appSettings, loading]);
+  }, [appSettings, loading, isModelInstalled]);
 
   // Don't render the onboarding if we're going to redirect
   if (loading) {

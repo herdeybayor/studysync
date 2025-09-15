@@ -70,8 +70,10 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="setup" options={{ headerShown: false }} />
           <Stack.Screen name="record" options={{ title: 'Record' }} />
-          <Stack.Screen name="models" options={{ title: 'Models' }} />
+          <Stack.Screen name="download-resources" options={{ headerShown: false }} />
+          <Stack.Screen name="save-recording" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="recording/[id]" options={{ headerShown: false }} />
         </Stack>
       </SQLite.SQLiteProvider>
     </Suspense>

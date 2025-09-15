@@ -39,7 +39,18 @@
             "deploymentTarget": "15.1"
           }
         }
-      ]
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone.",
+          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to use speech recognition.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -53,12 +64,16 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.herdeybayor.studysync",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app requires microphone access in order to transcribe speech"
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone.",
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "appleTeamId": "F8479GSX47"
     },
@@ -68,7 +83,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.herdeybayor.studysync",
-      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "extra": {
       "router": {},

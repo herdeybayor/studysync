@@ -2,41 +2,34 @@ import * as FileSystem from 'expo-file-system';
 import * as Network from 'expo-network';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { initWhisper, WhisperContext } from 'whisper.rn';
+import { initLlama, LlamaContext } from 'llama.rn';
 import { create } from 'zustand';
 
-// Define model information
-export const WHISPER_MODELS = {
-  tiny: {
-    name: 'Tiny (English)',
-    filename: 'ggml-tiny.en.bin',
-    size: 75, // Size in MB
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin',
-    languages: ['English'],
-    description: 'Fast but less accurate. Good for short commands and phrases.',
+// Define Llama model information - lightweight models suitable for mobile
+export const LLAMA_MODELS = {
+  'llama-3.2-1b': {
+    name: 'Llama 3.2 1B (Instruct)',
+    filename: 'llama-3.2-1b-instruct-q4_k_m.gguf',
+    size: 700, // Size in MB
+    url: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+    description:
+      'Lightweight Llama model for text generation and analysis. Perfect for naming and summarization.',
+    contextSize: 8192,
   },
-  base: {
-    name: 'Base (English)',
-    filename: 'ggml-base.en.bin',
-    size: 142, // Size in MB
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
-    languages: ['English'],
-    description: 'Better accuracy than tiny, still relatively fast.',
+  'qwen2.5-0.5b': {
+    name: 'Qwen2.5 0.5B (Instruct)',
+    filename: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    size: 400, // Size in MB
+    url: 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    description: 'Ultra-lightweight model for quick AI tasks. Fast and efficient for mobile use.',
+    contextSize: 32768,
   },
-  medium: {
-    name: 'Medium (Multilingual)',
-    filename: 'ggml-medium.bin',
-    size: 1500, // Size in MB
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
-    languages: ['Multiple languages including Arabic, Yoruba, etc.'],
-    description: 'High accuracy with multiple language support.',
-  },
-};
+} as const;
 
-export type ModelKey = keyof typeof WHISPER_MODELS;
+export type LlamaModelKey = keyof typeof LLAMA_MODELS;
 
 // Model download and management states
-export interface ModelDownloadState {
+export interface LlamaModelDownloadState {
   isDownloading: boolean;
   progress: number;
   error: string | null;
@@ -44,28 +37,28 @@ export interface ModelDownloadState {
   downloadTask: FileSystem.DownloadResumable | null;
 }
 
-export interface ModelState {
+export interface LlamaModelState {
   installedModels: Record<string, { path: string; installedAt: number }>;
-  currentModel: ModelKey | null;
-  downloads: Record<ModelKey, ModelDownloadState>;
+  currentModel: LlamaModelKey | null;
+  downloads: Record<LlamaModelKey, LlamaModelDownloadState>;
 
   // Actions
   initializeStore: () => Promise<void>;
-  downloadModel: (modelKey: ModelKey, bypassNetworkCheck?: boolean) => Promise<void>;
-  pauseDownload: (modelKey: ModelKey) => Promise<void>;
-  resumeDownload: (modelKey: ModelKey) => Promise<void>;
-  cancelDownload: (modelKey: ModelKey) => Promise<void>;
-  deleteModel: (modelKey: ModelKey) => Promise<void>;
-  setCurrentModel: (modelKey: ModelKey) => void;
+  downloadModel: (modelKey: LlamaModelKey, bypassNetworkCheck?: boolean) => Promise<void>;
+  pauseDownload: (modelKey: LlamaModelKey) => Promise<void>;
+  resumeDownload: (modelKey: LlamaModelKey) => Promise<void>;
+  cancelDownload: (modelKey: LlamaModelKey) => Promise<void>;
+  deleteModel: (modelKey: LlamaModelKey) => Promise<void>;
+  setCurrentModel: (modelKey: LlamaModelKey) => void;
 }
 
-// Create Zustand store for model state
-export const useModelStore = create<ModelState>((set, get) => ({
+// Create Zustand store for Llama model state
+export const useLlamaModelStore = create<LlamaModelState>((set, get) => ({
   installedModels: {},
   currentModel: null,
-  downloads: Object.keys(WHISPER_MODELS).reduce(
+  downloads: Object.keys(LLAMA_MODELS).reduce(
     (acc, key) => {
-      acc[key as ModelKey] = {
+      acc[key as LlamaModelKey] = {
         isDownloading: false,
         progress: 0,
         error: null,
@@ -74,27 +67,28 @@ export const useModelStore = create<ModelState>((set, get) => ({
       };
       return acc;
     },
-    {} as Record<ModelKey, ModelDownloadState>
+    {} as Record<LlamaModelKey, LlamaModelDownloadState>
   ),
 
   initializeStore: async () => {
     try {
-      // Create models directory if it doesn't exist
-      const modelsDir = `${FileSystem.documentDirectory}models`;
+      // Create llama models directory if it doesn't exist
+      const modelsDir = `${FileSystem.documentDirectory}llama_models`;
       const dirInfo = await FileSystem.getInfoAsync(modelsDir);
+
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(modelsDir);
       }
 
       // Read persisted data about installed models
       const persistedData = await FileSystem.readAsStringAsync(
-        `${FileSystem.documentDirectory}models_metadata.json`
+        `${FileSystem.documentDirectory}llama_models_metadata.json`
       ).catch(() => '{}');
 
       const parsed = JSON.parse(persistedData);
       const installedModels =
         (parsed.installedModels as Record<string, { path: string; installedAt: number }>) || {};
-      const currentModel = (parsed.currentModel as ModelKey | null) || null;
+      const currentModel = (parsed.currentModel as LlamaModelKey | null) || null;
 
       // Verify that all models actually exist
       const verified: Record<string, { path: string; installedAt: number }> = {};
@@ -110,7 +104,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
         currentModel: verified[currentModel as string] ? currentModel : null,
       });
     } catch (error) {
-      console.error('Failed to initialize model store:', error);
+      console.error('Failed to initialize Llama model store:', error);
       // Reset to defaults on error
       set({
         installedModels: {},
@@ -119,23 +113,23 @@ export const useModelStore = create<ModelState>((set, get) => ({
     }
   },
 
-  downloadModel: async (modelKey: ModelKey, bypassNetworkCheck = false) => {
+  downloadModel: async (modelKey: LlamaModelKey, bypassNetworkCheck = false) => {
     try {
-      console.log(`[WhisperModel] Starting download for ${modelKey} model`);
+      console.log(`[LlamaModel] Starting download for ${modelKey} model`);
       const { downloads } = get();
 
       // Check if download is already in progress
       if (downloads[modelKey]?.isDownloading) {
-        console.log(`[WhisperModel] Download already in progress for ${modelKey}`);
+        console.log(`[LlamaModel] Download already in progress for ${modelKey}`);
         return;
       }
 
       // Check if we're connected to internet
       const networkState = await Network.getNetworkStateAsync();
-      console.log(`[WhisperModel] Network state:`, networkState);
+      console.log(`[LlamaModel] Network state:`, networkState);
 
       if (!networkState.isInternetReachable) {
-        console.log(`[WhisperModel] No internet connection available`);
+        console.log(`[LlamaModel] No internet connection available`);
         set((state) => ({
           downloads: {
             ...state.downloads,
@@ -153,11 +147,10 @@ export const useModelStore = create<ModelState>((set, get) => ({
         !bypassNetworkCheck &&
         (!networkState.isConnected || networkState.type !== Network.NetworkStateType.WIFI)
       ) {
-        if (WHISPER_MODELS[modelKey].size > 100) {
+        if (LLAMA_MODELS[modelKey].size > 300) {
           console.log(
-            `[WhisperModel] Not on WiFi for large model ${modelKey}, showing warning in UI`
+            `[LlamaModel] Not on WiFi for large model ${modelKey}, showing warning in UI`
           );
-          // This is handled in the UI with an alert dialog
           set((state) => ({
             downloads: {
               ...state.downloads,
@@ -172,13 +165,13 @@ export const useModelStore = create<ModelState>((set, get) => ({
       }
 
       // Set up download
-      const modelInfo = WHISPER_MODELS[modelKey];
-      const modelDir = `${FileSystem.documentDirectory}models`;
+      const modelInfo = LLAMA_MODELS[modelKey];
+      const modelDir = `${FileSystem.documentDirectory}llama_models`;
       const modelPath = `${modelDir}/${modelInfo.filename}`;
 
-      console.log(`[WhisperModel] Setting up download for ${modelKey}`);
-      console.log(`[WhisperModel] URL: ${modelInfo.url}`);
-      console.log(`[WhisperModel] Target path: ${modelPath}`);
+      console.log(`[LlamaModel] Setting up download for ${modelKey}`);
+      console.log(`[LlamaModel] URL: ${modelInfo.url}`);
+      console.log(`[LlamaModel] Target path: ${modelPath}`);
 
       // Start download
       set((state) => ({
@@ -194,7 +187,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
       }));
 
       // Create downloadResumable
-      console.log(`[WhisperModel] Creating download resumable for ${modelKey}`);
+      console.log(`[LlamaModel] Creating download resumable for ${modelKey}`);
       const downloadResumable = FileSystem.createDownloadResumable(
         modelInfo.url,
         modelPath,
@@ -206,7 +199,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
           // Log progress every 10%
           if (Math.floor(progress * 10) > Math.floor(get().downloads[modelKey].progress * 10)) {
             console.log(
-              `[WhisperModel] Download progress for ${modelKey}: ${Math.round(progress * 100)}%`
+              `[LlamaModel] Download progress for ${modelKey}: ${Math.round(progress * 100)}%`
             );
           }
 
@@ -235,12 +228,12 @@ export const useModelStore = create<ModelState>((set, get) => ({
       }));
 
       // Begin download
-      console.log(`[WhisperModel] Starting download for ${modelKey}`);
+      console.log(`[LlamaModel] Starting download for ${modelKey}`);
       const downloadResult = await downloadResumable.downloadAsync();
-      console.log(`[WhisperModel] Download result for ${modelKey}:`, downloadResult);
+      console.log(`[LlamaModel] Download result for ${modelKey}:`, downloadResult);
 
       if (downloadResult?.uri) {
-        console.log(`[WhisperModel] Download complete for ${modelKey}`);
+        console.log(`[LlamaModel] Download complete for ${modelKey}`);
         // Update installed models
         const installedModels = {
           ...get().installedModels,
@@ -252,13 +245,13 @@ export const useModelStore = create<ModelState>((set, get) => ({
 
         // Save metadata
         await FileSystem.writeAsStringAsync(
-          `${FileSystem.documentDirectory}models_metadata.json`,
+          `${FileSystem.documentDirectory}llama_models_metadata.json`,
           JSON.stringify({
             installedModels,
             currentModel: get().currentModel || modelKey,
           })
         );
-        console.log(`[WhisperModel] Saved metadata for ${modelKey}`);
+        console.log(`[LlamaModel] Saved metadata for ${modelKey}`);
 
         // Update state
         set((state) => ({
@@ -275,10 +268,10 @@ export const useModelStore = create<ModelState>((set, get) => ({
             },
           },
         }));
-        console.log(`[WhisperModel] Updated state for completed ${modelKey} download`);
+        console.log(`[LlamaModel] Updated state for completed ${modelKey} download`);
       }
     } catch (error: any) {
-      console.error(`[WhisperModel] Failed to download model ${modelKey}:`, error);
+      console.error(`[LlamaModel] Failed to download model ${modelKey}:`, error);
       set((state) => ({
         downloads: {
           ...state.downloads,
@@ -293,13 +286,13 @@ export const useModelStore = create<ModelState>((set, get) => ({
     }
   },
 
-  pauseDownload: async (modelKey: ModelKey) => {
+  pauseDownload: async (modelKey: LlamaModelKey) => {
     const { downloads } = get();
     const downloadTask = downloads[modelKey]?.downloadTask;
 
     if (downloadTask) {
       try {
-        console.log(`[WhisperModel] Pausing download for ${modelKey}`);
+        console.log(`[LlamaModel] Pausing download for ${modelKey}`);
         const pausedDownload = await downloadTask.pauseAsync();
 
         set((state) => ({
@@ -313,20 +306,20 @@ export const useModelStore = create<ModelState>((set, get) => ({
             },
           },
         }));
-        console.log(`[WhisperModel] Successfully paused download for ${modelKey}`);
+        console.log(`[LlamaModel] Successfully paused download for ${modelKey}`);
       } catch (error) {
-        console.error(`[WhisperModel] Failed to pause download for ${modelKey}:`, error);
+        console.error(`[LlamaModel] Failed to pause download for ${modelKey}:`, error);
       }
     }
   },
 
-  resumeDownload: async (modelKey: ModelKey) => {
+  resumeDownload: async (modelKey: LlamaModelKey) => {
     const { downloads } = get();
     const downloadTask = downloads[modelKey]?.downloadTask;
 
     if (downloadTask) {
       try {
-        console.log(`[WhisperModel] Resuming download for ${modelKey}`);
+        console.log(`[LlamaModel] Resuming download for ${modelKey}`);
         set((state) => ({
           downloads: {
             ...state.downloads,
@@ -339,10 +332,10 @@ export const useModelStore = create<ModelState>((set, get) => ({
         }));
 
         const resumedDownload = await downloadTask.resumeAsync();
-        console.log(`[WhisperModel] Resume result for ${modelKey}:`, resumedDownload);
+        console.log(`[LlamaModel] Resume result for ${modelKey}:`, resumedDownload);
 
         if (resumedDownload?.uri) {
-          console.log(`[WhisperModel] Download completed after resume for ${modelKey}`);
+          console.log(`[LlamaModel] Download completed after resume for ${modelKey}`);
           // Update installed models
           const installedModels = {
             ...get().installedModels,
@@ -354,13 +347,13 @@ export const useModelStore = create<ModelState>((set, get) => ({
 
           // Save metadata
           await FileSystem.writeAsStringAsync(
-            `${FileSystem.documentDirectory}models_metadata.json`,
+            `${FileSystem.documentDirectory}llama_models_metadata.json`,
             JSON.stringify({
               installedModels,
               currentModel: get().currentModel || modelKey,
             })
           );
-          console.log(`[WhisperModel] Saved metadata after resume for ${modelKey}`);
+          console.log(`[LlamaModel] Saved metadata after resume for ${modelKey}`);
 
           set((state) => ({
             installedModels,
@@ -377,11 +370,11 @@ export const useModelStore = create<ModelState>((set, get) => ({
             },
           }));
           console.log(
-            `[WhisperModel] Updated state after resumed download completed for ${modelKey}`
+            `[LlamaModel] Updated state after resumed download completed for ${modelKey}`
           );
         }
       } catch (error: any) {
-        console.error(`[WhisperModel] Failed to resume download for ${modelKey}:`, error);
+        console.error(`[LlamaModel] Failed to resume download for ${modelKey}:`, error);
         set((state) => ({
           downloads: {
             ...state.downloads,
@@ -396,21 +389,21 @@ export const useModelStore = create<ModelState>((set, get) => ({
     }
   },
 
-  cancelDownload: async (modelKey: ModelKey) => {
+  cancelDownload: async (modelKey: LlamaModelKey) => {
     const { downloads } = get();
     const downloadTask = downloads[modelKey]?.downloadTask;
 
     if (downloadTask) {
       try {
-        console.log(`[WhisperModel] Cancelling download for ${modelKey}`);
+        console.log(`[LlamaModel] Cancelling download for ${modelKey}`);
         // Cancel download
         await downloadTask.cancelAsync();
 
         // Try to clean up partial download
-        const modelInfo = WHISPER_MODELS[modelKey];
-        const modelPath = `${FileSystem.documentDirectory}models/${modelInfo.filename}`;
+        const modelInfo = LLAMA_MODELS[modelKey];
+        const modelPath = `${FileSystem.documentDirectory}llama_models/${modelInfo.filename}`;
         await FileSystem.deleteAsync(modelPath, { idempotent: true });
-        console.log(`[WhisperModel] Cleaned up partial download file for ${modelKey}`);
+        console.log(`[LlamaModel] Cleaned up partial download file for ${modelKey}`);
 
         set((state) => ({
           downloads: {
@@ -424,23 +417,23 @@ export const useModelStore = create<ModelState>((set, get) => ({
             },
           },
         }));
-        console.log(`[WhisperModel] Download cancelled for ${modelKey}`);
+        console.log(`[LlamaModel] Download cancelled for ${modelKey}`);
       } catch (error) {
-        console.error(`[WhisperModel] Failed to cancel download for ${modelKey}:`, error);
+        console.error(`[LlamaModel] Failed to cancel download for ${modelKey}:`, error);
       }
     }
   },
 
-  deleteModel: async (modelKey: ModelKey) => {
+  deleteModel: async (modelKey: LlamaModelKey) => {
     try {
-      console.log(`[WhisperModel] Deleting model ${modelKey}`);
+      console.log(`[LlamaModel] Deleting model ${modelKey}`);
       const { installedModels, currentModel } = get();
       const modelData = installedModels[modelKey];
 
       if (modelData) {
         // Delete model file
         await FileSystem.deleteAsync(modelData.path, { idempotent: true });
-        console.log(`[WhisperModel] Deleted model file for ${modelKey}`);
+        console.log(`[LlamaModel] Deleted model file for ${modelKey}`);
 
         // Update state
         const updatedModels = { ...installedModels };
@@ -450,21 +443,21 @@ export const useModelStore = create<ModelState>((set, get) => ({
         let newCurrentModel = currentModel;
         if (currentModel === modelKey) {
           // Find another model to use, or set to null
-          newCurrentModel = (Object.keys(updatedModels)[0] as ModelKey) || null;
+          newCurrentModel = (Object.keys(updatedModels)[0] as LlamaModelKey) || null;
           console.log(
-            `[WhisperModel] Current model was deleted, switching to ${newCurrentModel || 'none'}`
+            `[LlamaModel] Current model was deleted, switching to ${newCurrentModel || 'none'}`
           );
         }
 
         // Save metadata
         await FileSystem.writeAsStringAsync(
-          `${FileSystem.documentDirectory}models_metadata.json`,
+          `${FileSystem.documentDirectory}llama_models_metadata.json`,
           JSON.stringify({
             installedModels: updatedModels,
             currentModel: newCurrentModel,
           })
         );
-        console.log(`[WhisperModel] Updated metadata after deleting ${modelKey}`);
+        console.log(`[LlamaModel] Updated metadata after deleting ${modelKey}`);
 
         set({
           installedModels: updatedModels,
@@ -472,86 +465,82 @@ export const useModelStore = create<ModelState>((set, get) => ({
         });
       }
     } catch (error) {
-      console.error(`[WhisperModel] Failed to delete model ${modelKey}:`, error);
+      console.error(`[LlamaModel] Failed to delete model ${modelKey}:`, error);
     }
   },
 
-  setCurrentModel: (modelKey: ModelKey) => {
+  setCurrentModel: (modelKey: LlamaModelKey) => {
     const { installedModels } = get();
 
     if (installedModels[modelKey]) {
-      console.log(`[WhisperModel] Setting current model to ${modelKey}`);
+      console.log(`[LlamaModel] Setting current model to ${modelKey}`);
       set({ currentModel: modelKey });
 
       // Persist current model choice
       FileSystem.writeAsStringAsync(
-        `${FileSystem.documentDirectory}models_metadata.json`,
+        `${FileSystem.documentDirectory}llama_models_metadata.json`,
         JSON.stringify({
           installedModels: get().installedModels,
           currentModel: modelKey,
         })
       ).catch((error) => {
-        console.error('[WhisperModel] Failed to persist current model choice:', error);
+        console.error('[LlamaModel] Failed to persist current model choice:', error);
       });
     }
   },
 }));
 
-// Hook to initialize Whisper with the current model
-export function useWhisperModel() {
-  const { installedModels, currentModel } = useModelStore();
-  const [whisperContext, setWhisperContext] = useState<WhisperContext | null>(null);
+// Hook to initialize Llama with the current model
+export function useLlamaModel() {
+  const { installedModels, currentModel } = useLlamaModelStore();
+  const [llamaContext, setLlamaContext] = useState<LlamaContext | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    console.log('[WhisperModel] useEffect triggered. Current model:', currentModel);
 
     async function loadModel() {
-      if (!currentModel) {
-        console.log('[WhisperModel] No current model selected. Aborting load.');
-        return;
-      }
+      if (!currentModel) return;
 
       const modelData = installedModels[currentModel];
-      if (!modelData) {
-        console.log('[WhisperModel] Model data not found for', currentModel, '. Aborting load.');
-        return;
-      }
+      if (!modelData) return;
 
-      console.log(`[WhisperModel] Preparing to load model: ${currentModel}`);
       setIsLoading(true);
       setError(null);
+      console.log(`[LlamaModel] Loading model ${currentModel}`);
 
       try {
+        // Release previous context if any
+        if (llamaContext) {
+          await llamaContext.release();
+          console.log(`[LlamaModel] Released previous llama context`);
+        }
+
+        // Initialize with the selected model
         const filePath =
           Platform.OS === 'ios' ? modelData.path.replace('file://', '') : modelData.path;
 
-        console.log(`[WhisperModel] Initializing Whisper with model path: ${filePath}`);
-        console.time(`[WhisperModel] ${currentModel} initialization`);
+        console.log(`[LlamaModel] Initializing llama with model path: ${filePath}`);
 
-        const context = await initWhisper({ filePath });
-
-        console.timeEnd(`[WhisperModel] ${currentModel} initialization`);
+        const modelInfo = LLAMA_MODELS[currentModel];
+        const context = await initLlama({
+          model: filePath,
+          n_ctx: Math.min(modelInfo.contextSize, 4096), // Limit context for mobile
+          n_threads: 4, // Optimize for mobile
+          use_mlock: false,
+          use_mmap: true,
+        });
 
         if (isMounted) {
-          console.log(
-            `[WhisperModel] Successfully loaded model ${currentModel}. Context ID:`,
-            context.id
-          );
-          setWhisperContext(context);
+          setLlamaContext(context);
           setIsLoading(false);
-        } else {
-          console.log(
-            '[WhisperModel] Component unmounted after model load, releasing new context.'
-          );
-          context.release();
+          console.log(`[LlamaModel] Successfully loaded model ${currentModel}`);
         }
       } catch (err: any) {
-        console.error('[WhisperModel] Failed to initialize Whisper model:', err);
+        console.error('[LlamaModel] Failed to initialize Llama model:', err);
         if (isMounted) {
-          setError(err.message || 'Failed to load speech recognition model');
+          setError(err.message || 'Failed to load AI model');
           setIsLoading(false);
         }
       }
@@ -561,20 +550,17 @@ export function useWhisperModel() {
 
     return () => {
       isMounted = false;
-      console.log('[WhisperModel] useEffect cleanup. Releasing context if it exists.');
-      if (whisperContext) {
-        console.log(`[WhisperModel] Releasing context ID: ${whisperContext.id}`);
-        whisperContext.release().catch(console.error);
+      if (llamaContext) {
+        llamaContext.release().catch(console.error);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentModel, JSON.stringify(installedModels)]);
+  }, [currentModel, installedModels]);
 
   return {
-    whisperContext,
+    llamaContext,
     isLoading,
     error,
     modelKey: currentModel,
-    modelInfo: currentModel ? WHISPER_MODELS[currentModel] : null,
+    modelInfo: currentModel ? LLAMA_MODELS[currentModel] : null,
   };
 }
